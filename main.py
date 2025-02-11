@@ -41,8 +41,10 @@ while True:
 
     #display stats on stats window 
     stats_frame = np.zeros((300, 400, 3), dtype=np.uint8)
-    cv2.putText(stats_frame, "Stats Here", (50, 150), 
-                cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2, cv2.LINE_AA)
+    cv2.putText(stats_frame, "info text goes here!", (150, 25), cv2.FONT_HERSHEY_SIMPLEX, 0.65, (0, 0, 255), 2, cv2.LINE_AA)
+    cv2.imshow(stats_window, stats_frame)
+    
+    
 
     #wait for user input to exit 
     if cv2.waitKey(1) == ord('q'):
@@ -52,5 +54,5 @@ while True:
 #-----------------------------------------------------------------------------------------------------#
 #cleanup
 cap_computer.release()
-cap_phone.release()
+# cap_phone.release()
 cv2.destroyAllWindows()
