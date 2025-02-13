@@ -1,6 +1,10 @@
 import cv2
 import numpy as np
 # import matlab.engine
+import pyiqa #BRISQUE, NIQUE, PaQ2PiQ and A LOT more!
+
+#import seems to work 
+# niqe_metric = pyiqa.create_metric('niqe').cuda()
 
 #import set resolution function
 from scaleResolution import resize_frame, store_frame
