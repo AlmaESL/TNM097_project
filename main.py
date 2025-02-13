@@ -2,6 +2,11 @@ import cv2
 import numpy as np
 # import matlab.engine
 
+#import set resolution function
+from scaleResolution import set_resolution
+
+
+
 #initialize camera ports 
 cap_computer = cv2.VideoCapture(0) 
 cap_phone = cv2.VideoCapture(1)
@@ -35,10 +40,14 @@ while True:
     if not ret_phone:
         print("Failed to capture frame from phone camera (iVCam).")
         break
+    
+    #rescale camera resolutions
+    resized_computer_frame = set_resolution(computer_frame, 400, 400)
+    resized_phone_frame = set_resolution(phone_frame, 00, 400)
 
     #display frames
-    cv2.imshow(computer_window, computer_frame)
-    cv2.imshow(phone_window, phone_frame)
+    cv2.imshow(computer_window, resized_computer_frame)
+    cv2.imshow(phone_window, resized_phone_frame)
 
     #display stats on stats window 
     stats_frame = np.zeros((300, 400, 3), dtype=np.uint8)
