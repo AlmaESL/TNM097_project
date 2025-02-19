@@ -62,7 +62,7 @@ def apply_spatial_filter(O1, O2, O3, spd):
 
 
 
-def scielab(frame, spd=70):
+def scielab(frame, spd):
     """
     Compute the S-CIELAB color space representation of an image in Lab space
 
