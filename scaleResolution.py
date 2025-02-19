@@ -4,7 +4,23 @@ WIDTH, HEIGHT = 512, 512
 FRAME_BUFFER = 10
 
 def resize_frame(frame, width=WIDTH, height=HEIGHT):
-    #resize a frame to the given dimensions 
+    """
+    Resize a frame to predefined dimensions 512x512
+
+    Parameters
+    ----------
+    frame : numpy.array
+        Input frame or image to be resized
+    width : int, optional
+        Width of resized frame, defaults to WIDTH
+    height : int, optional
+        Height of resized frame, defaults to HEIGHT
+
+    Returns
+    -------
+    resized_frame : numpy.array
+        Resized frame
+    """
     return cv2.resize(frame, (width, height))
 
 
@@ -18,25 +34,3 @@ def store_frame(buffer, frame):
         
     return buffer
 
-
-
-#image resizing in cv2 
-"""
-import cv2
-
-# Load the image
-image = cv2.imread('image.jpg')
-
-# Get the original dimensions
-(h, w) = image.shape[:2]
-
-# Desired width
-new_width = 800
-
-# Calculate the aspect ratio
-aspect_ratio = h / w
-new_height = int(new_width * aspect_ratio)
-
-# Resize the image
-resized_image = cv2.resize(image, (new_width, new_height))
-"""

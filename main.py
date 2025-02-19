@@ -17,6 +17,8 @@ from scaleResolution import resize_frame, store_frame
 from scielab import scielab
 
 # TODO: import spd functionality 
+from computeSPD import compute_spd
+
 # TODO: import stats functionality 
 
 
@@ -32,6 +34,16 @@ from scielab import scielab
 #---------------------------------------------------------------------#
 
 
+
+#-------------------------Globals consts for viewing dimensions-----------------------------------#
+SCREEN_WIDTH = 3000
+SCREEN_HEIGHT = 2000
+SCREEN_DIAGONAL = 14
+# VIEWING_DISTANCE = 15.748 -> default value = 40 cm
+spd = compute_spd(SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_DIAGONAL)
+
+#-------------------------------------------------------------------------------------------------#
+
 #initialize camera ports 
 cap_computer = cv2.VideoCapture(0) 
 # cap_phone = cv2.VideoCapture(1)
@@ -46,11 +58,11 @@ cv2.imwrite("frame.png", frame_resized)
 cap_computer.release()
 
 if ret:
-    result = scielab(frame_resized, spd=70)
+    result = scielab(frame_resized, spd)
     print("color values: ",result)
     print("dimensions: ", result.shape)
 
-
+# cv2.imwrite("result.png", result)
 #check if camera ports are open
 # if not cap_computer.isOpened() and cap_phone.isOpened():
 #     print("Error")

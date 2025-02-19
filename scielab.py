@@ -14,9 +14,12 @@ def xyz_to_lab(image):
 def xyz_to_opponent(XYZ):
     """Convert XYZ image to opponent space"""
     X, Y, Z = XYZ[:,:,0], XYZ[:,:,1], XYZ[:,:,2]
+    
+    #Matrix to convert XYZ to opponent space
     O1 = 0.279*X + 0.72*Y - 0.107*Z
     O2 = -0.449*X + 0.29*Y - 0.077*Z
     O3 = 0.086*X - 0.59*Y + 0.501*Z
+    
     return O1, O2, O3
 
 def gauss(half_width, width):
@@ -40,7 +43,7 @@ def sum_gauss(params, width):
 
 def apply_spatial_filter(O1, O2, O3, spd):
     """Apply spatial filtering to opponent channels"""
-    width = int(spd / 2) * 2 - 1  # Ensure odd width
+    width = int(spd / 2) * 2 - 1  # Ensure odd width 
     
     x1 = [width, 0.05, 1.00327, 0.225, 0.114416, 7.0, -0.117686]
     x2 = [width, 0.0685, 0.616725, 0.826, 0.383275]
@@ -50,14 +53,31 @@ def apply_spatial_filter(O1, O2, O3, spd):
     k2 = sum_gauss(x2, width)
     k3 = sum_gauss(x3, width)
 
+    #convolve with reflection padding 
     O1_f = convolve(O1, k1[:, None], mode='reflect')
     O2_f = convolve(O2, k2[:, None], mode='reflect')
     O3_f = convolve(O3, k3[:, None], mode='reflect')
 
     return O1_f, O2_f, O3_f
 
+
+
 def scielab(frame, spd=70):
-    """Compute SCIELAB for an image using given SPD"""
+    """
+    Compute the S-CIELAB color space representation of an image in Lab space
+
+    Parameters
+    ----------
+    frame : matrix
+        Input image or frame in RGB
+    spd : float, optional
+        Samples Per Degree of the screen, defaults to 70
+
+    Returns
+    -------
+    scielab_lab : matrix
+        S-CIELAB image
+    """
     frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
     xyz_frame = rgb_to_xyz(frame_rgb)
     O1, O2, O3 = xyz_to_opponent(xyz_frame)
