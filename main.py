@@ -3,13 +3,8 @@ import numpy as np
 # import matlab.engine
 import time
 
-import pyiqa #BRISQUE, NIQUE, PaQ2PiQ and A LOT more!
-
-
 #import seems to work 
 # niqe_metric = pyiqa.create_metric('niqe').cuda()
-
-
 
 
 #-------------------------file imports--------------------------------#
@@ -27,17 +22,15 @@ from computeSPD import compute_spd
 # Import deque functionality
 from deque import FrameBuffer
 
-# TODO: import NIQE, BRISQUE, PaQ2PiQ functionality
+from imported_metrics import compute_niqe_avg, compute_brisque_avg, compute_paq2piq_avg
+
 # TODO: import stats functionality 
 
 
 #------------------------------ToDos----------------------------------#
 
 # TODO: Implement deque functionality and averageing -> currently under way
-
-# TODO: create and implement a niqe file and function 
-# TODO: create and implement a brisque file and function 
-# TODO: create and implement a PaQ2PiQ file and function
+# TODO: Test that the brisque, niqe and paq2piq functions work 
 # TODO: create and implement a stats file and functions
 
 #---------------------------------------------------------------------#
