@@ -45,9 +45,39 @@ def sum_gauss(params, width):
     return g
 
 def apply_spatial_filter(O1, O2, O3, spd):
-    """Apply spatial filtering to opponent channels"""
+
+    """
+    Apply spatial filtering to the opponent color space components.
+
+    This function performs a convolution of each opponent component with a
+    Gaussian kernel, ensuring the width of the kernel is odd. The Gaussian
+    kernels are generated based on predefined parameters for each component.
+
+    Parameters
+    ----------
+    O1 : numpy.array
+        First opponent component of the image.
+    O2 : numpy.array
+        Second opponent component of the image.
+    O3 : numpy.array
+        Third opponent component of the image.
+    spd : float
+        Samples Per Degree of the screen, used to determine the width of
+        the Gaussian kernel.
+
+    Returns
+    -------
+    O1_f : numpy.array
+        Filtered first opponent component.
+    O2_f : numpy.array
+        Filtered second opponent component.
+    O3_f : numpy.array
+        Filtered third opponent component.
+    """
+
     width = int(spd / 2) * 2 - 1  # Ensure odd width 
     
+    # Parameters for the Gaussian kernels - pre-defined for human visual system
     x1 = [width, 0.05, 1.00327, 0.225, 0.114416, 7.0, -0.117686]
     x2 = [width, 0.0685, 0.616725, 0.826, 0.383275]
     x3 = [width, 0.0920, 0.567885, 0.6451, 0.432115]
@@ -56,7 +86,7 @@ def apply_spatial_filter(O1, O2, O3, spd):
     k2 = sum_gauss(x2, width)
     k3 = sum_gauss(x3, width)
 
-    #convolve with reflection padding 
+    # Convolve with reflection padding 
     O1_f = convolve(O1, k1[:, None], mode='reflect')
     O2_f = convolve(O2, k2[:, None], mode='reflect')
     O3_f = convolve(O3, k3[:, None], mode='reflect')
@@ -81,10 +111,15 @@ def scielab(frame, spd):
     scielab_lab : matrix
         S-CIELAB image
     """
+    
+    # Step 1: Convert RGB to XYZ
     frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
     xyz_frame = rgb_to_xyz(frame_rgb)
+    
+    # Step 2: Convert XYZ to opponent space
     O1, O2, O3 = xyz_to_opponent(xyz_frame)
 
+    # Step 3: Apply spatial filtering to the opponent space -> this represents the human visual system
     O1_f, O2_f, O3_f = apply_spatial_filter(O1, O2, O3, spd)
     
     # filtered_xyz = np.stack((O1_f, O2_f, O3_f), axis=-1).astype(np.float32)

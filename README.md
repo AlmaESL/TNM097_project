@@ -1,4 +1,4 @@
-# TNM097 Project
+# CAMpare NR IQA - TNM097 Project
 No-reference IQA on live video in OpenCV
 
 Objective metrics used: 
