@@ -199,6 +199,49 @@ def opponent_to_lab(opponent_matrix):
     return lab_matrix
 
 
+# def compute_color_difference(lab_frames): 
+#     """
+#     Compute the color difference between consecutive frames in LAB color space.
+
+#     Parameters
+#     ----------
+#     lab_frames : list of numpy.array
+#         List of frames in LAB color space.
+
+#     Returns
+#     -------
+#     avg_color_diff : float
+#         Average color difference across all frames.
+#     max_color_diff : float
+#         Maximum color difference observed between consecutive frames.
+#     min_color_diff : float
+#         Minimum color difference observed between consecutive frames.
+#     max_diff_loc : tuple
+#         Location of the maximum color difference in the frame.
+#     min_diff_loc : tuple
+#         Location of the minimum color difference in the frame.
+#     """
+#     # Initialize the color difference maps
+#     diff_maps = []
+    
+#     # Iterate over the frames and compute the color difference between consecutive frames
+#     for i in range(len(lab_frames) - 1):
+#         diff = np.linalg.norm(lab_frames[i+1] - lab_frames[i], axis=-1)
+#         diff_maps.append(diff)
+        
+#     diff_maps = np.stack(diff_maps, axis=0)
+    
+#     avg_color_diff = np.mean(diff_maps)
+#     max_color_diff = np.max(diff_maps)
+#     min_color_diff = np.min(diff_maps)
+    
+#     # Retrieve the locations of min and max diffs 
+#     max_diff_loc = np.unravel_index(np.argmax(diff_maps), diff_maps.shape[1:])
+#     min_diff_loc = np.unravel_index(np.argmin(diff_maps), diff_maps.shape[1:])
+    
+#     return avg_color_diff, max_color_diff, min_color_diff, max_diff_loc, min_diff_loc
+
+
 def compute_color_difference(lab_frames): 
     """
     Compute the color difference between consecutive frames in LAB color space.
@@ -221,22 +264,16 @@ def compute_color_difference(lab_frames):
     min_diff_loc : tuple
         Location of the minimum color difference in the frame.
     """
-    # Initialize the color difference maps
-    diff_maps = []
-    
-    # Iterate over the frames and compute the color difference between consecutive frames
-    for i in range(len(lab_frames) - 1):
-        diff = np.linalg.norm(lab_frames[i+1] - lab_frames[i], axis=-1)
-        diff_maps.append(diff)
-        
-    diff_maps = np.stack(diff_maps, axis=0)
-    
+    # Compute frame-to-frame color difference
+    diff_maps = [np.linalg.norm(lab_frames[i+1] - lab_frames[i], axis=-1) for i in range(len(lab_frames) - 1)]
+    diff_maps = np.stack(diff_maps, axis=0)  # Shape: (num_frames-1, H, W)
+
     avg_color_diff = np.mean(diff_maps)
     max_color_diff = np.max(diff_maps)
     min_color_diff = np.min(diff_maps)
-    
-    # Retrieve the locations of min and max diffs 
-    max_diff_loc = np.unravel_index(np.argmax(diff_maps), diff_maps.shape[1:])
-    min_diff_loc = np.unravel_index(np.argmin(diff_maps), diff_maps.shape[1:])
-    
-    return avg_color_diff, max_color_diff, min_color_diff, max_diff_loc, min_diff_loc
+
+    # Correctly find the frame index and spatial location
+    frame_idx_max, h_max, w_max = np.unravel_index(np.argmax(diff_maps), diff_maps.shape)
+    frame_idx_min, h_min, w_min = np.unravel_index(np.argmin(diff_maps), diff_maps.shape)
+
+    return avg_color_diff, max_color_diff, min_color_diff, (h_max, w_max), (h_min, w_min)

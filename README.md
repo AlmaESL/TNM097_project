@@ -16,5 +16,6 @@ Dependencies:
 - pip install numpy 
 - pip install skimage
 - pip install pyica
+- pip install tabulate
 
 Preferably run within virtual python environment .venv in VSCode with python extension

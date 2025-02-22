@@ -25,7 +25,9 @@ def compute_spd(screen_width, screen_height, screen_diagonal, viewing_distance=1
     """
 
     ppi = np.sqrt(screen_width**2 + screen_height**2) / screen_diagonal
-    spd = ppi * viewing_distance * (math.pi/180)
+    spd = round(ppi * viewing_distance * (math.pi/180), 3)
+    
+    print("Samples Per Degree: ", spd)
     
     return spd
     
