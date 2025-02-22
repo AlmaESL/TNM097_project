@@ -93,8 +93,28 @@ def log_phone_results(file_path, std, avg_diff, max_diff, min_diff, max_pos, min
     
 
 
+# TODO: add phone camera stats to the window as well 
+
 def draw_stats_window(stats, width=600, height=600): 
-    
+    """
+    Draws a statistics window displaying various quality metrics.
+
+    Parameters
+    ----------
+    stats : dict
+        Dictionary containing the statistics to display, with keys 'std', 
+        'avg_diff', 'max_diff', 'min_diff', 'max_pos', 'min_pos', 'niqe', 
+        'brisque', and 'paq2piq', each mapping to their respective values.
+    width : int, optional
+        The width of the stats window, default is 600.
+    height : int, optional
+        The height of the stats window, default is 600.
+
+    Returns
+    -------
+    None
+    """
+
     stats_frame = np.zeros((height, width, 3), dtype=np.uint8)
     metrics_list = [
         f"Avg STD - Graininess: {stats['std']:.3f}",
