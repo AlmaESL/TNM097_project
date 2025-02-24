@@ -3,7 +3,7 @@ import numpy as np
 import cv2
 
 
-def log_computer_results(file_path, std, avg_diff, max_diff, min_diff, max_pos, min_pos, niqe, brisque, paq2piq): 
+def log_computer_results(file_path, std, avg_diff, max_diff, max_pos, niqe, brisque, paq2piq): 
     
     """
     Logs the results of the evaluation to a text file.
@@ -35,7 +35,6 @@ def log_computer_results(file_path, std, avg_diff, max_diff, min_diff, max_pos, 
             ["Avg STD - Graininess", f"{std:.3f}"],
             ["Avg Color Diff", f"{avg_diff:.3f}"],
             ["Max Color Diff", f"{max_diff:.3f} (at {max_pos})"],
-            ["Min Color Diff", f"{min_diff:.3f} (at {min_pos})"], 
             ["NIQE", f"{niqe:.3f}"],
             ["BRISQUE", f"{brisque:.3f}"],
             ["PAQ2PIQ", f"{paq2piq:.3f}"]
@@ -50,7 +49,7 @@ def log_computer_results(file_path, std, avg_diff, max_diff, min_diff, max_pos, 
     
     
     
-def log_phone_results(file_path, std, avg_diff, max_diff, min_diff, max_pos, min_pos, niqe, brisque, paq2piq): 
+def log_phone_results(file_path, std, avg_diff, max_diff, max_pos, niqe, brisque, paq2piq): 
     
     """
     Logs the results of the evaluation to a text file.
@@ -82,7 +81,6 @@ def log_phone_results(file_path, std, avg_diff, max_diff, min_diff, max_pos, min
             ["Avg STD - Graininess", f"{std:.3f}"],
             ["Avg Color Diff ", f"{avg_diff:.3f}"],
             ["Max Color Diff", f"{max_diff:.3f} (at {max_pos})"],
-            ["Min Color Diff", f"{min_diff:.3f} (at {min_pos})"], 
             ["NIQE", f"{niqe:.3f}"],
             ["BRISQUE", f"{brisque:.3f}"],
             ["PAQ2PIQ", f"{paq2piq:.3f}"]
@@ -95,7 +93,7 @@ def log_phone_results(file_path, std, avg_diff, max_diff, min_diff, max_pos, min
 
 # TODO: add phone camera stats to the window as well 
 
-def draw_stats_window(stats, width=600, height=600): 
+def draw_stats_window_computer(stats, width=600, height=600): 
     """
     Draws a statistics window displaying various quality metrics.
 
@@ -116,11 +114,11 @@ def draw_stats_window(stats, width=600, height=600):
     """
 
     stats_frame = np.zeros((height, width, 3), dtype=np.uint8)
+    
     metrics_list = [
         f"Avg STD - Graininess: {stats['std']:.3f}",
         f"Avg Color Diff: {stats['avg_diff']:.3f}",
         f"Max Color Diff: {stats['max_diff']:.3f} at {stats['max_pos']}",
-        f"Min Color Diff: {stats['min_diff']:.3f} at {stats['min_pos']}",
         f"NIQE: {stats['niqe']:.3f}",
         f"BRISQUE: {stats['brisque']:.3f}",
         f"PaQ2PiQ: {stats['paq2piq']:.3f}"
@@ -132,4 +130,46 @@ def draw_stats_window(stats, width=600, height=600):
                     cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 0, 0), 1, cv2.LINE_AA)
         
     
-    cv2.imshow("Stats Window", stats_frame)
+    cv2.imshow("Computer Stats Window", stats_frame)
+    
+    
+    
+    
+def draw_stats_window_phone(stats, width=600, height=600): 
+    """
+    Draws a statistics window displaying various quality metrics.
+
+    Parameters
+    ----------
+    stats : dict
+        Dictionary containing the statistics to display, with keys 'std', 
+        'avg_diff', 'max_diff', 'min_diff', 'max_pos', 'min_pos', 'niqe', 
+        'brisque', and 'paq2piq', each mapping to their respective values.
+    width : int, optional
+        The width of the stats window, default is 600.
+    height : int, optional
+        The height of the stats window, default is 600.
+
+    Returns
+    -------
+    None
+    """
+
+    stats_frame = np.zeros((height, width, 3), dtype=np.uint8)
+    
+    metrics_list = [
+        f"Avg STD - Graininess: {stats['std']:.3f}",
+        f"Avg Color Diff: {stats['avg_diff']:.3f}",
+        f"Max Color Diff: {stats['max_diff']:.3f} at {stats['max_pos']}",
+        f"NIQE: {stats['niqe']:.3f}",
+        f"BRISQUE: {stats['brisque']:.3f}",
+        f"PaQ2PiQ: {stats['paq2piq']:.3f}"
+    ]
+    
+    y_offset = 30
+    for i, line in enumerate(metrics_list):
+        cv2.putText(stats_frame, line, (20, y_offset + i*30),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 0, 0), 1, cv2.LINE_AA)
+        
+    
+    cv2.imshow("Phone Stats Window", stats_frame)

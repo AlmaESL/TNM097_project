@@ -4,10 +4,6 @@ import numpy as np
 import time
 
 
-#import seems to work 
-# niqe_metric = pyiqa.create_metric('niqe').cuda()
-
-
 #-------------------------file imports--------------------------------#
 
 # Import set resolution function
@@ -27,7 +23,7 @@ from imported_metrics import compute_niqe_avg, compute_brisque_avg, compute_paq2
 # from imported_metrics import QualityMetrics
 
 # TODO: import stats functionality 
-from logger import log_computer_results, log_phone_results, draw_stats_window
+from logger import log_computer_results, log_phone_results, draw_stats_window_computer, draw_stats_window_phone
 
 
 #------------------------------ToDos----------------------------------#
@@ -53,7 +49,7 @@ MAX_FRAMES = 30
 
 # Define results file
 results_file_computer = "computer_results.txt"
-# results_file_phone = "phone_results.txt"
+results_file_phone = "phone_results.txt"
 
 #-------------------------------------------------------------------------------------------------#
 
@@ -62,7 +58,7 @@ results_file_computer = "computer_results.txt"
 
 #initialize camera ports 
 cap_computer = cv2.VideoCapture(0) 
-# cap_phone = cv2.VideoCapture(1)
+cap_phone = cv2.VideoCapture(1)
 
 #------------------------Initialize time for fpd calculations-----------------------------#
 prev_frame_time = 0 
@@ -80,52 +76,54 @@ current_frame_time = 0
 computer_frame_buffer = FrameBuffer(MAX_FRAMES)
 computer_opponent_buffer = FrameBuffer(MAX_FRAMES)
 
-# phone_frame_buffer = FrameBuffer(MAX_FRAMES)
-# phone_opponent_buffer = FrameBuffer(MAX_FRAMES)
+phone_frame_buffer = FrameBuffer(MAX_FRAMES)
+phone_opponent_buffer = FrameBuffer(MAX_FRAMES)
 
+print("Filling deques...\n")
 
 # Fill buffers for both cameras  
-while not computer_frame_buffer.is_full():
+while not computer_frame_buffer.is_full() and not phone_frame_buffer.is_full():
     
+    # Read for computer camera
     computer_ret, computer_frame = cap_computer.read()
+    
     
     if computer_ret: 
         
         # Resize frames 
         computer_frame = resize_frame(computer_frame)
-        # print("Resized computer frame size: ", computer_frame.shape)
         
         # Compute scielab and the average std of the frames in the buffer 
         computer_frame_buffer.add_frame(computer_frame)
         computer_opponent_buffer.add_frame(scielab(computer_frame, spd))
-       
-    # phone_ret = cap_computer.read()
+    
+    # Read for phone camera
+    phone_ret, phone_frame = cap_computer.read()
 
-    # if phone_ret: 
+    if phone_ret: 
+        phone_frame = resize_frame(phone_frame)
         
-    #     phone_frame = resize_frame(phone_frame)
-    #     print("Resized phone frame size: ", phone_frame.shape)
-        
-    #     phone_frame_buffer.add_frame(phone_frame)
-    #     phone_opponent_buffer.add_frame(scielab(phone_frame, spd))
+        phone_frame_buffer.add_frame(phone_frame)
+        phone_opponent_buffer.add_frame(scielab(phone_frame, spd))
     
     # Small delay of capture for smoother capture  
     time.sleep(0.1)
 
 
+print("Computing metrics...\n")
+
 #------------------------------------Main loop--------------------------------#
 while True: 
     
     computer_ret, computer_frame = cap_computer.read()
-    # phone_ret, phone_frame = cap_phone.read()
+    phone_ret, phone_frame = cap_phone.read()
     
-    if not computer_ret:
+    if not computer_ret or not phone_ret:
         print("Failed to capture frames")
         break
     
     # Resize frames and compute scielab
     computer_frame = resize_frame(computer_frame)
-    # print("frame size: ", computer_frame.shape)
     
     # Get current frame time
     current_frame_time = time.time()
@@ -134,80 +132,103 @@ while True:
     # Update previous frame time to current frame time
     prev_frame_time = current_frame_time
 
-    # #print to frames window converted to string format
-    # write_to_frame(computer_frame, fps)
+    #print to frames window converted to string format
+    write_to_frame(computer_frame, fps)
+    write_to_frame(phone_frame, fps)
     
+    # Store frames in deque
     computer_frame_buffer.add_frame(computer_frame)
+    # Compute scielab of computer frame
     computer_opponent_matrix = scielab(computer_frame, spd)
+    # Store scielab of computer frame in deque
     computer_opponent_buffer.add_frame(computer_opponent_matrix)
     
-    # phone_frame = resize_frame(phone_frame)
-    # phone_frame_buffer.add_frame(phone_frame)
-    # phone_opponent_matrix = scielab(phone_frame, spd)
-    # phone_opponent_buffer.add_frame(phone_opponent_matrix)
+    phone_frame = resize_frame(phone_frame)
+    # Store frames in deque, compute scielab of phone frame and store in deque
+    phone_frame_buffer.add_frame(phone_frame)
+    phone_opponent_matrix = scielab(phone_frame, spd)
+    phone_opponent_buffer.add_frame(phone_opponent_matrix)
     
     # When buffers are full, compute the average standard deviation of the frames in the buffer - this is a graininess value 
-    if computer_opponent_buffer.is_full():
+    if computer_opponent_buffer.is_full() and phone_opponent_buffer.is_full():
         
         # std of buffer frames 
         computer_frames_array = np.stack(computer_opponent_buffer.get_frames(), axis=0)
         computer_avg_std = np.mean(np.std(computer_frames_array, axis=0))
         
-        # phone_frames_array = np.stack(phone_opponent_buffer.get_frames(), axis=0)
-        # phone_avg_std = np.mean(np.std(phone_frames_array, axis=0))
+        phone_frames_array = np.stack(phone_opponent_buffer.get_frames(), axis=0)
+        phone_avg_std = np.mean(np.std(phone_frames_array, axis=0))
         
         # Euclidean distances of colors 
         computer_lab_frames = [opponent_to_lab(frame) for frame in computer_opponent_buffer.get_frames()]
-        # phone_lab_frames = [opponent_to_lab(frame) for frame in phone_opponent_buffer.get_frames()]
+        phone_lab_frames = [opponent_to_lab(frame) for frame in phone_opponent_buffer.get_frames()]
         
         # Compute Color Differences in LAB Space
-        comp_avg_diff, comp_max_diff, comp_min_diff, comp_max_pos, comp_min_pos = compute_color_difference(computer_lab_frames)
-        # phone_avg_diff, phone_max_diff, phone_min_diff, phone_max_pos, phone_min_pos = compute_color_difference(phone_lab_frames)
+        comp_avg_diff, comp_max_diff, comp_max_pos = compute_color_difference(computer_lab_frames)
+        phone_avg_diff, phone_max_diff, phone_max_pos = compute_color_difference(phone_lab_frames)
         
         # Start computing NIQE, BRISQUE, and PaQ2PiQ asynchronously
         # quality_metrics.compute_metrics_async(computer_frame_buffer.get_frames())
 
-        # # Retrieve the latest values (non-blocking)
+        # # # Retrieve the latest values (non-blocking)
         # computer_niqe, computer_brisque, computer_paq2piq = quality_metrics.get_metrics()
         
         computer_niqe = compute_niqe_avg(computer_frame_buffer.get_frames())
         computer_brisque = compute_brisque_avg(computer_frame_buffer.get_frames())
         computer_paq2piq = compute_paq2piq_avg(computer_frame_buffer.get_frames())
         
+        phone_niqe = compute_niqe_avg(phone_frame_buffer.get_frames())
+        phone_brisque = compute_brisque_avg(phone_frame_buffer.get_frames())
+        phone_paq2piq = compute_paq2piq_avg(phone_frame_buffer.get_frames())
+        
         # Print results of cielab and color differences
         # print(f"Computer Cam - Avg STD: {computer_avg_std:.3f} | Avg Color Diff: {comp_avg_diff:.3f} | Max Diff: {comp_max_diff:.3f} (at {comp_max_pos}) | Min Diff: {comp_min_diff:.3f} (at {comp_min_pos})")
         # print(f"Phone Cam - Avg STD: {phone_avg_std:.3f} | Avg Color Diff: {phone_avg_diff:.3f} | Max Diff: {phone_max_diff:.3f} (at {phone_max_pos}) | Min Diff: {phone_min_diff:.3f} (at {phone_min_pos})")
 
         # Log results to file
-        log_computer_results(results_file_computer, computer_avg_std, comp_avg_diff, comp_max_diff, comp_min_diff, comp_max_pos, comp_min_pos, computer_niqe, computer_brisque, computer_paq2piq)
+        log_computer_results(results_file_computer, computer_avg_std, comp_avg_diff, comp_max_diff, comp_max_pos, computer_niqe, computer_brisque, computer_paq2piq)
+        log_phone_results(results_file_phone, phone_avg_std, phone_avg_diff, phone_max_diff, phone_max_pos, phone_niqe, phone_brisque, phone_paq2piq)
         
         # Update stats window
-        stats_data = {
+        computer_stats_data = {
         "std": computer_avg_std,
         "avg_diff": comp_avg_diff,
         "max_diff": comp_max_diff,
-        "min_diff": comp_min_diff,
         "max_pos": comp_max_pos,
-        "min_pos": comp_min_pos,
         "niqe": computer_niqe,
         "brisque": computer_brisque,
         "paq2piq": computer_paq2piq
         }
         
-        draw_stats_window(stats_data)
+        phone_stats_data = {
+        "std": phone_avg_std,
+        "avg_diff": phone_avg_diff,
+        "max_diff": phone_max_diff,
+        "max_pos": phone_max_pos,
+        "niqe": phone_niqe,
+        "brisque": phone_brisque,
+        "paq2piq": phone_paq2piq
+        }
+        
+        draw_stats_window_computer(computer_stats_data)
+        draw_stats_window_phone(phone_stats_data)
 
 
     # Display frames from both cameras
     cv2.imshow("Computer capture", computer_frame)
-    # cv2.imshow("Phone capture", phone_frame)
+    cv2.imwrite("comp_frame.png", computer_frame) #debugging
+    
+    cv2.imshow("Phone capture", phone_frame)
+    cv2.imwrite("phone_frame.png", phone_frame)
         
     # Exit loop when 'q' is pressed
     if cv2.waitKey(1) & 0xFF == ord('q'):
         break
 
+
 #cleanup 
 cap_computer.release()
-# cap_phone.release()
+cap_phone.release()
 cv2.destroyAllWindows()
 
 
@@ -219,8 +240,11 @@ cv2.destroyAllWindows()
 
 
 
+
+
 #-------------------------Camera test ----------------------------------#
-# cam_cap = cv2.VideoCapture(2)
+# cam_cap = cv2.VideoCapture('http://192.168.50.138:8080/video')
+# cam_cap = cv2.VideoCapture(3) #3 iriun webcam
 # ret, frame = cam_cap.read()
     
 # while True: 
@@ -230,7 +254,7 @@ cv2.destroyAllWindows()
 #         frame = resize_frame(frame)
 #         cv2.imshow("Camera", frame)
 #         print("frame szie:", frame.shape)
-#         cv2.imwrite("test.tif", frame)
+#         cv2.imwrite("test1.tif", frame)
         
 #         if cv2.waitKey(1) & 0xFF == ord('q'):
 #             break
@@ -244,4 +268,4 @@ cv2.destroyAllWindows()
 # cam_cap.release()
 # cv2.destroyAllWindows()
 
-   
+  

@@ -270,10 +270,11 @@ def compute_color_difference(lab_frames):
 
     avg_color_diff = np.mean(diff_maps)
     max_color_diff = np.max(diff_maps)
-    min_color_diff = np.min(diff_maps)
+    # min_color_diff = np.min(diff_maps)
 
     # Correctly find the frame index and spatial location
     frame_idx_max, h_max, w_max = np.unravel_index(np.argmax(diff_maps), diff_maps.shape)
-    frame_idx_min, h_min, w_min = np.unravel_index(np.argmin(diff_maps), diff_maps.shape)
+    # frame_idx_min, h_min, w_min = np.unravel_index(np.argmin(diff_maps), diff_maps.shape)
 
-    return avg_color_diff, max_color_diff, min_color_diff, (h_max, w_max), (h_min, w_min)
+    # return avg_color_diff, max_color_diff, min_color_diff, (h_max, w_max), (h_min, w_min)
+    return avg_color_diff, max_color_diff, (h_max, w_max)
