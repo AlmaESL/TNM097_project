@@ -7,7 +7,7 @@ Objective metrics used:
 - BRISQUE
 
 Subjective metric used: 
-- PaQ2Pic
+- PaQ2PiQ
 
 
 Dependencies: 
