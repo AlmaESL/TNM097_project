@@ -3,6 +3,8 @@ import cv2
 from scipy.ndimage import convolve
 from scipy.spatial.distance import euclidean
 from skimage.color import rgb2xyz, xyz2lab
+import matplotlib.pyplot as plt
+import os
 
 
 def rgb_to_xyz(image):
@@ -114,6 +116,8 @@ def scielab(frame, spd):
     
     # Step 1: Convert RGB to XYZ
     frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+    # Normalize
+    frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB).astype(np.float32) / 255.0
     xyz_frame = rgb_to_xyz(frame_rgb)
     
     # Step 2: Convert XYZ to opponent space
@@ -147,7 +151,7 @@ def compute_std(frames_deque):
     """
 
     frames_deque = np.stack(frames_deque, axis=0)  # Shape: (30, H, W, 3)
-    return np.mean(np.std(frames_deque, axis=0))
+    return np.std(frames_deque, axis=0)
 
 
 
@@ -169,34 +173,60 @@ def euclidean_distance(color1, color2):
     """
     return euclidean(color1, color2)
 
-def opponent_to_lab(opponent_matrix): 
+# def opponent_to_lab(opponent_matrix): 
 
-    """
-    Convert opponent space to LAB
+#     """
+#     Convert opponent space to LAB
 
-    Parameters
-    ----------
-    opponent_matrix : numpy.array
-        Opponent space matrix
+#     Parameters
+#     ----------
+#     opponent_matrix : numpy.array
+#         Opponent space matrix
 
-    Returns
-    -------
-    lab_matrix : numpy.array
-        LAB matrix
-    """
+#     Returns
+#     -------
+#     lab_matrix : numpy.array
+#         LAB matrix
+#     """
     
-    # The inverse of the opponent transformation matrix will get us back to XYZ space
-    X = (opponent_matrix[..., 0 ] + 0.107 * opponent_matrix[...,2]) / 0.279
-    Y = (opponent_matrix[..., 0] - 0.72 * opponent_matrix[..., 1]) / 0.72
-    Z = (opponent_matrix[..., 2] - 0.086 * opponent_matrix[..., 0]) / 0.501
+#     # The inverse of the opponent transformation matrix will get us back to XYZ space
+#     X = (opponent_matrix[..., 0 ] + 0.107 * opponent_matrix[...,2]) / 0.279
+#     Y = (opponent_matrix[..., 0] - 0.72 * opponent_matrix[..., 1]) / 0.72
+#     Z = (opponent_matrix[..., 2] - 0.086 * opponent_matrix[..., 0]) / 0.501
     
-    # Stack the XYZ channels to form the XYZ matrix
-    xyz_matrix = np.stack((X,Y,Z), axis=-1)
+#     # Stack the XYZ channels to form the XYZ matrix
+#     xyz_matrix = np.stack((X,Y,Z), axis=-1)
     
-    # Convert the XYZ matrix to LAB space
+#     # Convert the XYZ matrix to LAB space
+#     lab_matrix = xyz2lab(xyz_matrix)
+    
+#     return lab_matrix
+
+def opponent_to_xyz(opponent_matrix):
+    # Unpack the opponent channels
+    O1 = opponent_matrix[..., 0]
+    O2 = opponent_matrix[..., 1]
+    O3 = opponent_matrix[..., 2]
+    
+    # Apply the computed inverse transformation
+    X = 0.627 * O1 - 1.868 * O2 - 0.153 * O3
+    Y = 1.370 * O1 + 0.935 * O2 + 1.421 * O3
+    Z = 1.506 * O1 + 0.436 * O2 + 2.536 * O3
+    
+    # Stack into an XYZ image
+    xyz_matrix = np.stack((X, Y, Z), axis=-1)
+    return xyz_matrix
+
+def opponent_to_lab(opponent_matrix):
+    xyz_matrix = opponent_to_xyz(opponent_matrix)
     lab_matrix = xyz2lab(xyz_matrix)
     
+    lab_matrix[..., 0] = np.clip(lab_matrix[..., 0], 0, 100) # L* in [0,100] 
+    lab_matrix[..., 1] = np.clip(lab_matrix[..., 1], -100, 100) # a* roughly in [-100,100] 
+    lab_matrix[..., 2] = np.clip(lab_matrix[..., 2], -100, 100) # b* roughly in [-100,100] 
+    
     return lab_matrix
+
 
 
 # def compute_color_difference(lab_frames): 
@@ -221,28 +251,49 @@ def opponent_to_lab(opponent_matrix):
 #     min_diff_loc : tuple
 #         Location of the minimum color difference in the frame.
 #     """
-#     # Initialize the color difference maps
-#     diff_maps = []
-    
-#     # Iterate over the frames and compute the color difference between consecutive frames
-#     for i in range(len(lab_frames) - 1):
-#         diff = np.linalg.norm(lab_frames[i+1] - lab_frames[i], axis=-1)
-#         diff_maps.append(diff)
-        
-#     diff_maps = np.stack(diff_maps, axis=0)
-    
+#     diff_maps = [np.linalg.norm(lab_frames[i+1] - lab_frames[i], axis=-1) 
+#              for i in range(len(lab_frames) - 1)]
+#     diff_maps = np.stack(diff_maps, axis=0)  # Shape: (num_frames-1, H, W)
+
 #     avg_color_diff = np.mean(diff_maps)
 #     max_color_diff = np.max(diff_maps)
-#     min_color_diff = np.min(diff_maps)
-    
-#     # Retrieve the locations of min and max diffs 
-#     max_diff_loc = np.unravel_index(np.argmax(diff_maps), diff_maps.shape[1:])
-#     min_diff_loc = np.unravel_index(np.argmin(diff_maps), diff_maps.shape[1:])
-    
-#     return avg_color_diff, max_color_diff, min_color_diff, max_diff_loc, min_diff_loc
+#     frame_idx_max, h_max, w_max = np.unravel_index(np.argmax(diff_maps), diff_maps.shape)
+
+#     return avg_color_diff, max_color_diff, (h_max, w_max)
 
 
-def compute_color_difference(lab_frames): 
+
+
+# def compute_color_difference(lab_frame):
+#     """
+#     Compute the color difference between consecutive frames in LAB color space.
+
+#     Parameters
+#     ----------
+#     lab_frames : list of numpy.array
+#         List of frames in LAB color space.
+
+#     Returns
+#     -------
+#     color_diffs : list of float
+#         List of color differences for each consecutive frame.
+#     max_color_diff : float
+#         Maximum color difference observed between consecutive frames.
+#     max_diff_loc : tuple
+#         Location of the maximum color difference in the frame.
+#     """
+#     diff_maps = [np.linalg.norm(lab_frame[i+1] - lab_frame[i], axis=-1) 
+#                  for i in range(len(lab_frame) - 1)]
+#     diff_maps = np.stack(diff_maps, axis=0)  # Shape: (num_frames-1, H, W)
+
+#     color_diffs = [np.mean(diff_map) for diff_map in diff_maps]
+#     max_color_diff = np.max(diff_maps)
+#     frame_idx_max, h_max, w_max = np.unravel_index(np.argmax(diff_maps), diff_maps.shape)
+
+#     return color_diffs, max_color_diff, (h_max, w_max)
+
+
+def compute_color_difference(lab_frames):
     """
     Compute the color difference between consecutive frames in LAB color space.
 
@@ -253,28 +304,21 @@ def compute_color_difference(lab_frames):
 
     Returns
     -------
-    avg_color_diff : float
-        Average color difference across all frames.
+    color_diffs : list of float
+        List of color differences for each consecutive frame.
     max_color_diff : float
         Maximum color difference observed between consecutive frames.
-    min_color_diff : float
-        Minimum color difference observed between consecutive frames.
     max_diff_loc : tuple
         Location of the maximum color difference in the frame.
-    min_diff_loc : tuple
-        Location of the minimum color difference in the frame.
+    diff_maps : numpy.array
+        Array of color difference maps.
     """
-    # Compute frame-to-frame color difference
-    diff_maps = [np.linalg.norm(lab_frames[i+1] - lab_frames[i], axis=-1) for i in range(len(lab_frames) - 1)]
+    diff_maps = [np.linalg.norm(lab_frames[i+1] - lab_frames[i], axis=-1) 
+                 for i in range(len(lab_frames) - 1)]
     diff_maps = np.stack(diff_maps, axis=0)  # Shape: (num_frames-1, H, W)
 
-    avg_color_diff = np.mean(diff_maps)
+    color_diffs = [np.mean(diff_map) for diff_map in diff_maps]
     max_color_diff = np.max(diff_maps)
-    # min_color_diff = np.min(diff_maps)
-
-    # Correctly find the frame index and spatial location
     frame_idx_max, h_max, w_max = np.unravel_index(np.argmax(diff_maps), diff_maps.shape)
-    # frame_idx_min, h_min, w_min = np.unravel_index(np.argmin(diff_maps), diff_maps.shape)
 
-    # return avg_color_diff, max_color_diff, min_color_diff, (h_max, w_max), (h_min, w_min)
-    return avg_color_diff, max_color_diff, (h_max, w_max)
+    return color_diffs, max_color_diff, (h_max, w_max), diff_maps

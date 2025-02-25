@@ -20,3 +20,7 @@ class FrameBuffer:
     def get_frames(self):
         """Returns all frames in the buffer."""
         return list(self.buffer)
+    
+    def pop_frame(self):
+        """Removes and returns the oldest frame in the buffer."""
+        self.buffer.popleft()

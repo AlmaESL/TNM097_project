@@ -18,7 +18,7 @@ def calculate_fps(prev_frame_time, current_frame_time):
     """
     frame_time = current_frame_time - prev_frame_time
     fps = 1 / frame_time
-    print(f"fps: {fps:.3f} seconds")
+    print(f"fps: {fps:.3f} seconds\n")
     return fps
 
 

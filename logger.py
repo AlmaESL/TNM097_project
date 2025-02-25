@@ -127,7 +127,7 @@ def draw_stats_window_computer(stats, width=600, height=600):
     y_offset = 30
     for i, line in enumerate(metrics_list):
         cv2.putText(stats_frame, line, (20, y_offset + i*30),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 0, 0), 1, cv2.LINE_AA)
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 0, 100), 1, cv2.LINE_AA)
         
     
     cv2.imshow("Computer Stats Window", stats_frame)
@@ -169,7 +169,7 @@ def draw_stats_window_phone(stats, width=600, height=600):
     y_offset = 30
     for i, line in enumerate(metrics_list):
         cv2.putText(stats_frame, line, (20, y_offset + i*30),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 0, 0), 1, cv2.LINE_AA)
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 0, 100), 1, cv2.LINE_AA)
         
     
     cv2.imshow("Phone Stats Window", stats_frame)
