@@ -3,57 +3,59 @@ import numpy as np
 import os
 import datetime
 from tabulate import tabulate
+import matplotlib.pyplot as plt
 
-# Define logging directories
+# ------------------------- Define Directories ------------------------- #
 LOG_DIR = "Results"
 COMPUTER_LOG_DIR = os.path.join(LOG_DIR, "computer")
 PHONE_LOG_DIR = os.path.join(LOG_DIR, "phone")
 
-# Ensure directories exist
-os.makedirs(COMPUTER_LOG_DIR, exist_ok=True)
-os.makedirs(PHONE_LOG_DIR, exist_ok=True)
+FRAME_DIR = "captured_frames"
+computer_frames_dir = os.path.join(FRAME_DIR, "computer")
+phone_frames_dir = os.path.join(FRAME_DIR, "phone")
 
-# Function to generate time stamped log file paths
+DIFF_DIR = "color_differences"
+computer_diff_dir = os.path.join(DIFF_DIR, "computer")
+phone_diff_dir = os.path.join(DIFF_DIR, "phone")
+
+# Ensure directories exist
+for directory in [COMPUTER_LOG_DIR, PHONE_LOG_DIR, 
+                  computer_frames_dir, phone_frames_dir, 
+                  computer_diff_dir, phone_diff_dir]:
+    os.makedirs(directory, exist_ok=True)
+
+
+
+# ------------------------- Directory Retrieval Functions ------------------------- #
+def get_computer_frames_dir():
+    return computer_frames_dir
+
+def get_phone_frames_dir():
+    return phone_frames_dir
+
+def get_computer_diff_dir():
+    return computer_diff_dir
+
+def get_phone_diff_dir():
+    return phone_diff_dir
+
+
+
+
+# ------------------------- Logging Functions ------------------------- #
 def get_log_file_path(log_dir, device):
     timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     return os.path.join(log_dir, f"{device}_log_{timestamp}.txt")
 
-# Function to log results
 def log_results(log_dir, device, std, avg_diff, max_diff, max_pos, niqe, brisque, paq2piq):
-    """
-    Logs evaluation results in a structured format with a timestamped filename.
-
-    Parameters
-    ----------
-    log_dir : str
-        Directory where logs should be saved.
-    device : str
-        The device type (e.g., "Computer" or "Phone").
-    std : float
-        Average standard deviation (graininess).
-    avg_diff : float
-        Average color difference.
-    max_diff : float
-        Maximum observed color difference.
-    max_pos : tuple
-        Location of the max color difference in the frame.
-    niqe : float
-        NIQE quality metric.
-    brisque : float
-        BRISQUE quality metric.
-    paq2piq : float
-        PaQ2PiQ quality metric.
-    """
+    """Logs evaluation results in a structured format with a timestamped filename."""
     log_file = get_log_file_path(log_dir, device)
 
     with open(log_file, 'a', encoding="utf-8") as f:
-        
-        # Write header
         f.write("\n" + "="*60 + "\n")
         f.write(f"{device} Evaluation Results - {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
         f.write("="*60 + "\n")
-        
-        # Write table of metrics values 
+
         table_data = [
             ["Metric", "Value"],
             ["Avg STD - Graininess", f"{std:.3f}"],
@@ -63,11 +65,10 @@ def log_results(log_dir, device, std, avg_diff, max_diff, max_pos, niqe, brisque
             ["BRISQUE", f"{brisque:.3f}"],
             ["PAQ2PIQ", f"{paq2piq:.3f}"]
         ]
-        
+
         f.write(tabulate(table_data, headers="firstrow", tablefmt='grid'))
         f.write("\n\n")
 
-# Separate logging functions for computer and phone
 def log_computer_results(std, avg_diff, max_diff, max_pos, niqe, brisque, paq2piq):
     """Logs results for the computer camera."""
     log_results(COMPUTER_LOG_DIR, "Computer", std, avg_diff, max_diff, max_pos, niqe, brisque, paq2piq)
@@ -75,8 +76,8 @@ def log_computer_results(std, avg_diff, max_diff, max_pos, niqe, brisque, paq2pi
 def log_phone_results(std, avg_diff, max_diff, max_pos, niqe, brisque, paq2piq):
     """Logs results for the phone camera."""
     log_results(PHONE_LOG_DIR, "Phone", std, avg_diff, max_diff, max_pos, niqe, brisque, paq2piq)
-    
-    
+
+
 def draw_stats_window_computer(stats, width=600, height=600): 
     """
     Draws a statistics window displaying various quality metrics.
@@ -157,3 +158,20 @@ def draw_stats_window_phone(stats, width=600, height=600):
         
     
     cv2.imshow("Phone Stats Window", stats_frame)
+
+
+
+# ------------------------- Color Difference Map Saving ------------------------- #
+def save_color_difference_maps(diff_maps, save_dir, device):
+    """Saves color difference maps as images with color bars."""
+    for i, diff_map in enumerate(diff_maps):
+        plt.figure(figsize=(6, 6))
+        plt.imshow(diff_map, cmap='viridis')
+        plt.colorbar(label='Color Difference')
+        plt.axis('off')
+
+        save_path = os.path.join(save_dir, f"{device}_diff_{i}.png")
+        plt.savefig(save_path, bbox_inches='tight', pad_inches=0.1, dpi=300)
+        plt.close()
+
+    print(f"Saved {len(diff_maps)} color difference maps from {device}")

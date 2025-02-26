@@ -12,8 +12,12 @@ from scielab import scielab, opponent_to_lab, compute_color_difference
 from FPS import calculate_fps
 from SPD import compute_spd
 from importedMetrics import compute_metrics
-from logger import log_computer_results, log_phone_results, draw_stats_window_computer, draw_stats_window_phone
-
+from logger import (
+    log_computer_results, log_phone_results, draw_stats_window_computer, 
+    draw_stats_window_phone, save_color_difference_maps,
+    get_computer_frames_dir, get_phone_frames_dir,
+    get_computer_diff_dir, get_phone_diff_dir
+)
 
 
 #-------------------------Globals consts for viewing dimensions, deque size and frame counter-----------------------------------#
@@ -29,15 +33,10 @@ FRAME_DELAY = 0.01
 # FRAME_SKIP = 3 # to read ever n'th frame
 
 #-----------------------------Directories for results logging------------------------------------#
-computer_frames_dir = "captured_frames/computer"
-phone_frames_dir = "captured_frames/phone"
-os.makedirs(computer_frames_dir, exist_ok=True)
-os.makedirs(phone_frames_dir, exist_ok=True)
-
-computer_diff_dir = "color_differences/computer"
-phone_diff_dir = "color_differences/phone"
-os.makedirs(computer_diff_dir, exist_ok=True)
-os.makedirs(phone_diff_dir, exist_ok=True)
+computer_frames_dir = get_computer_frames_dir()
+phone_frames_dir = get_phone_frames_dir()
+computer_diff_dir = get_computer_diff_dir()
+phone_diff_dir = get_phone_diff_dir()
 
 
 #------------------------------------------------Initiliaze video captures-------------------------------------------------------#
@@ -198,21 +197,9 @@ while True:
             "fps: ": fps
         })
         
-        
-        # Save color difference maps
-        for i, diff_map in enumerate(comp_diff_maps):
-            plt.imshow(diff_map, cmap='viridis')
-            plt.colorbar(label='Color Difference')
-            plt.axis('off')
-            plt.savefig(os.path.join(computer_diff_dir, f"computer_diff_{i}.png"), bbox_inches='tight', dpi=300)
-            plt.close()
-
-        for i, diff_map in enumerate(phone_diff_maps):
-            plt.imshow(diff_map, cmap='viridis')
-            plt.colorbar(label='Color Difference')
-            plt.axis('off')
-            plt.savefig(os.path.join(phone_diff_dir, f"phone_diff_{i}.png"), bbox_inches='tight', dpi=300)
-            plt.close()
+        # Save color difference maps using the logger function
+        save_color_difference_maps(comp_diff_maps, computer_diff_dir, "computer")
+        save_color_difference_maps(phone_diff_maps, phone_diff_dir, "phone")
 
         print("\nBatch Evaluated\n")
 
