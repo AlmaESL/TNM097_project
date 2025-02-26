@@ -1,4 +1,4 @@
-# TNM097 Project
+# CAMpare NR IQA - TNM097 Project
 No-reference IQA on live video in OpenCV
 
 Objective metrics used: 
@@ -16,5 +16,6 @@ Dependencies:
 - pip install numpy 
 - pip install skimage
 - pip install pyica
+- pip install tabulate
 
 Preferably run within virtual python environment .venv in VSCode with python extension
