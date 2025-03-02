@@ -35,7 +35,7 @@ def preprocess_frame(frame):
     return torch.tensor(frame).unsqueeze(0)
 
 def compute_metrics(frame):
-  
+
     """
     Compute a set of metrics for a given frame.
 

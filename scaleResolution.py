@@ -1,6 +1,6 @@
 import cv2
 
-WIDTH, HEIGHT = 512, 512
+WIDTH, HEIGHT = 400, 400
 FRAME_BUFFER = 10
 PHONE_HEIGHT = 640
 
@@ -22,8 +22,20 @@ def resize_frame(frame, width=WIDTH, height=HEIGHT):
     resized_frame : numpy.array
         Resized frame
     """
-    return cv2.resize(frame, (width, height))
+    frame = cv2.resize(frame, (width, height))
+    
+    # Remove 130 pizels on top and 80 on the bottom
+    # frame = frame[60:-80]
+    
+    # Remove top 40 pixels
+    frame = frame[40:]
+    
+    print("new frame dim: ", frame.shape)
+    return frame
 
+
+def flip(frame): 
+    return cv2.flip(frame, 1)
 
 
 def resize_phone_frame(frame, width=WIDTH, height=PHONE_HEIGHT): 

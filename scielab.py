@@ -37,6 +37,10 @@ def xyz_to_opponent(XYZ):
     O2 = -0.449*X + 0.29*Y - 0.077*Z
     O3 = 0.086*X - 0.59*Y + 0.501*Z
     
+    # print("o1: ", O1)
+    # print("o2: ", O2)
+    # print("o3: ", O3)
+    
     return O1, O2, O3
 
 def gauss(half_width, width):
@@ -129,10 +133,15 @@ def apply_spatial_filter(O1, O2, O3, spd):
     x1 = [width, 0.05, 1.00327, 0.225, 0.114416, 7.0, -0.117686]
     x2 = [width, 0.0685, 0.616725, 0.826, 0.383275]
     x3 = [width, 0.0920, 0.567885, 0.6451, 0.432115]
+    
+    x1[1::2] = [x * spd for x in x1[1::2]]
+    x2[1::2] = [x * spd for x in x2[1::2]]
+    x3[1::2] = [x * spd for x in x3[1::2]]
 
-    k1 = sum_gauss(x1, width)
-    k2 = sum_gauss(x2, width)
-    k3 = sum_gauss(x3, width)
+    k1 = sum_gauss(x1, width).astype(np.float64)
+    k2 = sum_gauss(x2, width).astype(np.float64)
+    k3 = sum_gauss(x3, width).astype(np.float64)
+
 
     # Convolve with reflection padding 
     O1_f = convolve(O1, k1[:, None], mode='reflect')
@@ -140,6 +149,8 @@ def apply_spatial_filter(O1, O2, O3, spd):
     O3_f = convolve(O3, k3[:, None], mode='reflect')
 
     return O1_f, O2_f, O3_f
+
+7
 
 
 
@@ -165,20 +176,33 @@ def scielab(frame, spd):
     # Normalize
     frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB).astype(np.float32) / 255.0
     xyz_frame = rgb_to_xyz(frame_rgb)
+    # print("xyz: ", xyz_frame)
+    # print("xyz size: ", xyz_frame.shape)
     
     # Step 2: Convert XYZ to opponent space
     O1, O2, O3 = xyz_to_opponent(xyz_frame)
-
+    # print("opponent without spatials: ", np.stack((O1, O2, O3), axis=-1))
+    # print("\n\no1: ", O1)
+    # print("o2: ", O2)
+    # print("o3: ", O3)
+    # print("size: ", np.stack((O1, O2, O3), axis=-1).shape)
+    
+    
     # Step 3: Apply spatial filtering to the opponent space -> this represents the human visual system
     O1_f, O2_f, O3_f = apply_spatial_filter(O1, O2, O3, spd)
+    # print("o1 filtered: ", O1_f)
+    # print("o2 filtered: ", O2_f)
+    # print("o3 filtered: ", O3_f)
     
     # filtered_xyz = np.stack((O1_f, O2_f, O3_f), axis=-1).astype(np.float32)
     # scielab_lab = xyz_to_lab(filtered_xyz)
     
     opponent_space = np.stack((O1_f, O2_f, O3_f), axis=-1)
     
+    # print("opponent with spatials: ", opponent_space)
+    # print("opponent with spatials size: ", opponent_space.shape)
     # Go back to XYZ space 
-    opponent_xyz = opponent_to_xyz(opponent_space)
+    # opponent_xyz = opponent_to_xyz(opponent_space)
     
     return opponent_space
     
@@ -214,10 +238,14 @@ def opponent_to_xyz(opponent_matrix):
     O3 = opponent_matrix[..., 2]
     
     # Apply the computed inverse transformation
-    X = 0.627 * O1 - 1.868 * O2 - 0.153 * O3
-    Y = 1.370 * O1 + 0.935 * O2 + 1.421 * O3
-    Z = 1.506 * O1 + 0.436 * O2 + 2.536 * O3
+    X = 0.610 * O1 - 1.819 * O2 - 0.149 * O3
+    Y = 1.416 * O1 + 0.798 * O2 + 0.425 * O3
+    Z = 1.772 * O1 + 0.628 * O2 + 2.471 * O3
     
+    # print("x_new: ", X)
+    # print("y_new: ", Y)
+    # print("z_new: ", Z)   
+ 
     # Stack into an XYZ image
     xyz_matrix = np.stack((X, Y, Z), axis=-1)
     return xyz_matrix
@@ -247,42 +275,56 @@ def opponent_to_lab(opponent_matrix):
     """
     xyz_matrix = opponent_to_xyz(opponent_matrix)
     lab_matrix = xyz2lab(xyz_matrix)
+    # print("lab: ", lab_matrix)
     
-    lab_matrix[..., 0] = np.clip(lab_matrix[..., 0], 0, 100) # L* in [0,100] 
-    lab_matrix[..., 1] = np.clip(lab_matrix[..., 1], -100, 100) # a* roughly in [-100,100] 
-    lab_matrix[..., 2] = np.clip(lab_matrix[..., 2], -100, 100) # b* roughly in [-100,100] 
+    # lab_matrix[..., 0] = np.clip(lab_matrix[..., 0], 0, 100) # L* in [0,100] 
+    # lab_matrix[..., 1] = np.clip(lab_matrix[..., 1], -100, 100) # a* roughly in [-100,100] 
+    # lab_matrix[..., 2] = np.clip(lab_matrix[..., 2], -100, 100) # b* roughly in [-100,100] 
     
     return lab_matrix
 
 
 
-
-def compute_color_difference(lab_frames):
+def compute_color_difference(lab_frame1, lab_frame2):
     """
-    Compute the color difference between consecutive frames in LAB color space using euclidean distance.
+    Compute the color difference between two frames in LAB color space using Euclidean distance.
 
     Parameters
     ----------
-    lab_frames : list of numpy.array
-        List of frames in LAB color space.
+    lab_frame1 : numpy.array
+        First frame in LAB color space.
+    lab_frame2 : numpy.array
+        Second frame in LAB color space.
 
     Returns
     -------
-    color_diffs : list of float
-        List of color differences for each consecutive frame.
+    mean_color_diff : float
+        Mean color difference across the image.
     max_color_diff : float
-        Maximum color difference observed between consecutive frames.
+        Maximum color difference observed.
     max_diff_loc : tuple
-        Location of the maximum color difference in the frame.
-    diff_maps : numpy.array
-        Array of color difference maps.
+        Location (row, col) of the maximum color difference.
+    diff_map : numpy.array
+        2D array of pixel-wise color differences.
     """
-    diff_maps = [np.linalg.norm(lab_frames[i+1] - lab_frames[i], axis=-1) 
-                 for i in range(len(lab_frames) - 1)]
-    diff_maps = np.stack(diff_maps, axis=0)  # Shape: (num_frames-1, H, W)
+    
+    max = 0
+    # Compute Euclidean distance at each pixel
+    for channel in range(3):
+        diff_map = lab_frame2[..., channel] - lab_frame1[..., channel]
+        diff_map = diff_map**2
+        diff_map = np.sqrt(diff_map)
+ 
+    # Compute statistics for diff maps and diff values
+    mean_color_diff = np.mean(diff_map) # per frame
+    max_color_diff = np.max(diff_map)
+    
+    if(max_color_diff > max):
+        max = max_color_diff
+        max_diff_loc = np.unravel_index(np.argmax(diff_map), diff_map.shape)  # Location of max difference
+    
 
-    color_diffs = [np.mean(diff_map) for diff_map in diff_maps]
-    max_color_diff = np.max(diff_maps)
-    frame_idx_max, h_max, w_max = np.unravel_index(np.argmax(diff_maps), diff_maps.shape)
+    return mean_color_diff, max, max_diff_loc, diff_map
 
-    return color_diffs, max_color_diff, (h_max, w_max), diff_maps
+
+

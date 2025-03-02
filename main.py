@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 
 #-------------------------file imports--------------------------------#
 
-from scaleResolution import resize_frame
+from scaleResolution import resize_frame, flip
 from scielab import scielab, opponent_to_lab, compute_color_difference
 from FPS import calculate_fps
 from SPD import compute_spd
@@ -16,7 +16,7 @@ from logger import (
     log_computer_results, log_phone_results, draw_stats_window_computer, 
     draw_stats_window_phone, save_color_difference_maps,
     get_computer_frames_dir, get_phone_frames_dir,
-    get_computer_diff_dir, get_phone_diff_dir
+    get_computer_diff_dir
 )
 
 
@@ -35,8 +35,8 @@ FRAME_DELAY = 0.01
 #-----------------------------Directories for results logging------------------------------------#
 computer_frames_dir = get_computer_frames_dir()
 phone_frames_dir = get_phone_frames_dir()
-computer_diff_dir = get_computer_diff_dir()
-phone_diff_dir = get_phone_diff_dir()
+diff_dir = get_computer_diff_dir()
+# phone_diff_dir = get_phone_diff_dir()
 
 
 #------------------------------------------------Initiliaze video captures-------------------------------------------------------#
@@ -80,6 +80,14 @@ print("\nEvaluation loop entered...\n")
 
 
 
+def compute_std(frame): 
+    std =0 
+    for channel in cv2.split(frame):
+        std += np.std(channel)
+    return std
+
+
+
 #------------------------------------Main loop--------------------------------#
 while True:
     
@@ -103,9 +111,9 @@ while True:
     # if counter % FRAME_SKIP != 0:
     #     continue
     
-    # Resize frames, 512x512
     computer_frame = resize_frame(computer_frame)
     phone_frame = resize_frame(phone_frame)
+    phone_frame = flip(phone_frame)
     
     # Save frames to designated folder
     computer_frame_path = os.path.join(computer_frames_dir, f"computer_frame_{counter}.png")
@@ -134,22 +142,66 @@ while True:
         print("\nProcessing batch...\n")
 
         # Compute standard deviation - graininess
-        new_computer_std = np.std(np.stack(computer_opponent_buffer), axis=0)
-        new_phone_std = np.std(np.stack(phone_opponent_buffer), axis=0)
+        # new_computer_std = np.std(np.stack(computer_opponent_buffer))
+        # # new_computer_std = np.sum(new_computer_std)
+        # new_phone_std = np.std(np.stack(phone_opponent_buffer))
+        # # new_phone_std = np.sum(new_phone_std)
+        
+        # # Compute standard deviation across all frames in opponent space
+        # # computer_std_devs = [np.std(frame) for frame in computer_opponent_buffer]  
+        # # phone_std_devs = [np.std(frame) for frame in phone_opponent_buffer]
 
-        computer_metrics['std'].append(new_computer_std)
-        phone_metrics['std'].append(new_phone_std)
+        # computer_metrics['std'].append(new_computer_std)
+        # phone_metrics['std'].append(new_phone_std)
+        
+        # Compute std per frame (spatial std)
+        # computer_std_per_frame = [np.std(np.stack(frame, axis=0)) for frame in computer_opponent_buffer]
+        # phone_std_per_frame = [np.std(np.stack(frame), axis=0) for frame in phone_opponent_buffer]
+
+        computer_std_per_frame = [compute_std(frame) for frame in computer_opponent_buffer]
+        phone_std_per_frame = [compute_std(frame) for frame in phone_opponent_buffer]
+
+        # Compute average std across all processed frames
+        computer_avg_std = np.mean(computer_std_per_frame)
+        phone_avg_std = np.mean(phone_std_per_frame)
+
 
         # Convert to Lab color space
         computer_lab_frames = [opponent_to_lab(frame) for frame in computer_opponent_buffer]
         phone_lab_frames = [opponent_to_lab(frame) for frame in phone_opponent_buffer]
 
         # Compute color differences
-        comp_avg_diff, comp_max_diff, comp_max_pos, comp_diff_maps = compute_color_difference(computer_lab_frames)
-        phone_avg_diff, phone_max_diff, phone_max_pos, phone_diff_maps = compute_color_difference(phone_lab_frames)
+        # comp_avg_diff, comp_max_diff, comp_max_pos, comp_diff_maps = compute_color_difference(computer_lab_frames)
+        # phone_avg_diff, phone_max_diff, phone_max_pos, phone_diff_maps = compute_color_difference(phone_lab_frames)
+        # device_color_diff_avg, device_max_diff, device_max_pos, device_diff_maps = compute_color_difference(computer_lab_frames, phone_lab_frames) 
+        
+        device_diff_maps = []
+        device_color_diff_avgs = []
+        device_max_diffs = []
+        device_max_positions = []
+        device_max_indices = []
 
-        computer_metrics['color_diff'].append(comp_avg_diff)
-        phone_metrics['color_diff'].append(phone_avg_diff)
+        for i, (comp_lab, phone_lab) in enumerate(zip(computer_lab_frames, phone_lab_frames)):
+            avg_diff, max_diff, max_pos, diff_map = compute_color_difference(comp_lab, phone_lab)
+    
+            device_diff_maps.append(diff_map)
+            device_color_diff_avgs.append(avg_diff)
+            device_max_diffs.append(max_diff)
+            device_max_positions.append(max_pos)
+            device_max_indices.append(i)
+
+        device_color_diff_avg = np.mean(device_color_diff_avgs)
+        print("device_color_diff_avg: ", device_color_diff_avg)
+        
+        device_max_diff = np.max(device_max_diffs)
+        device_max_pos = device_max_positions[np.argmax(device_max_diffs)]
+        max_diff_frame_index = device_max_indices[np.argmax(device_max_diffs)]
+        print("\nmax color diff at index: ", max_diff_frame_index)
+        
+        computer_metrics['color_diff'].append(device_color_diff_avg)
+        phone_metrics['color_diff'].append(device_color_diff_avg)
+        
+        # phone_metrics['color_diff'].append(phone_avg_diff)
 
         # Compute NIQE, BRISQUE, and PaQ2PiQ metrics
         computer_quality_metrics = compute_metrics(computer_frame)
@@ -160,11 +212,13 @@ while True:
             phone_metrics[metric].append(phone_quality_metrics[metric])
 
         # Compute moving averages on metrics
-        computer_avg_std = np.mean(computer_metrics['std'])
-        phone_avg_std = np.mean(phone_metrics['std'])
+        # computer_avg_std = np.mean(computer_metrics['std'])
+        # phone_avg_std = np.mean(phone_metrics['std'])
         
-        avg_computer_color_diff = np.mean(computer_metrics['color_diff'])
-        avg_phone_color_diff = np.mean(phone_metrics['color_diff'])
+        # avg_computer_color_diff = np.mean(computer_metrics['color_diff'])
+        # avg_phone_color_diff = np.mean(phone_metrics['color_diff'] 
+        # device_color_diff_avg = np.mean(computer_metrics['color_diff'])
+        # print("device_color_diff_avg2: ", device_color_diff_avg)
         
         computer_avg_niqe = np.mean(computer_metrics['niqe'])
         computer_avg_brisque = np.mean(computer_metrics['brisque'])
@@ -179,16 +233,16 @@ while True:
         phone_avg_piqe = np.mean(phone_metrics['piqe'])
 
         # Log results to res directory as txt files
-        log_computer_results(computer_avg_std, avg_computer_color_diff, comp_max_diff, comp_max_pos, computer_avg_niqe, computer_avg_brisque, computer_avg_paq2piq, computer_avg_nima, computer_avg_piqe)
-        log_phone_results(phone_avg_std, avg_phone_color_diff, phone_max_diff, phone_max_pos, phone_avg_niqe, phone_avg_brisque, phone_avg_paq2piq, phone_avg_nima, phone_avg_piqe)
+        log_computer_results(computer_avg_std, device_color_diff_avg, device_max_diff, device_max_pos, computer_avg_niqe, computer_avg_brisque, computer_avg_paq2piq, computer_avg_nima, computer_avg_piqe)
+        log_phone_results(phone_avg_std, device_color_diff_avg, device_max_diff, device_max_pos, phone_avg_niqe, phone_avg_brisque, phone_avg_paq2piq, phone_avg_nima, phone_avg_piqe)
 
         
         # Update stats windows
         draw_stats_window_computer({
             "std": computer_avg_std,
-            "avg_diff": avg_computer_color_diff,
-            "max_diff": comp_max_diff,
-            "max_pos": comp_max_pos,
+            "avg_diff": device_color_diff_avg,
+            "max_diff": device_max_diff,
+            "max_pos": device_max_pos,
             "niqe": computer_avg_niqe,
             "piqe": computer_avg_piqe,
             "brisque": computer_avg_brisque,
@@ -198,9 +252,9 @@ while True:
         
         draw_stats_window_phone({
             "std": phone_avg_std,
-            "avg_diff": avg_phone_color_diff,
-            "max_diff": phone_max_diff,
-            "max_pos": phone_max_pos,
+            "avg_diff": device_color_diff_avg,
+            "max_diff": device_max_diff,
+            "max_pos": device_max_pos,
             "niqe": phone_avg_niqe,
             "piqe": phone_avg_piqe,
             "brisque": phone_avg_brisque,
@@ -209,8 +263,8 @@ while True:
         })
         
         # Save color difference maps using the logger function
-        save_color_difference_maps(comp_diff_maps, computer_diff_dir, "computer")
-        save_color_difference_maps(phone_diff_maps, phone_diff_dir, "phone")
+        save_color_difference_maps(device_diff_maps, diff_dir, "computer")
+        # save_color_difference_maps(phone_diff_maps, phone_diff_dir, "phone")
 
         print("\nBatch Evaluated\n")
 
@@ -222,7 +276,7 @@ while True:
 
     
     # Small delay for smoother processing
-    time.sleep(FRAME_DELAY)
+    # time.sleep(FRAME_DELAY)
     
     # Exit main loop when 'q' is pressed
     if cv2.waitKey(1) & 0xFF == ord('q'):
