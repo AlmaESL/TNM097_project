@@ -38,13 +38,13 @@ phone_frames_dir = get_phone_frames_dir()
 diff_dir = get_computer_diff_dir()
 # phone_diff_dir = get_phone_diff_dir()
 
-
+print("\nEvaluation loop entered...\n")
 #------------------------------------------------Initiliaze video captures-------------------------------------------------------#
 cap_computer = cv2.VideoCapture(0) 
 cap_phone = cv2.VideoCapture(1)
 
-cap_computer.set(cv2.CAP_PROP_FPS, 30)
-cap_phone.set(cv2.CAP_PROP_FPS, 30)
+# cap_computer.set(cv2.CAP_PROP_FPS, 30)
+# cap_phone.set(cv2.CAP_PROP_FPS, 30)
 
 
 #------------------------Initialize time for fpd calculations-----------------------------#
@@ -76,14 +76,12 @@ phone_metrics = { 'std': deque(maxlen=MAX_FRAMES), 'niqe': deque(maxlen=MAX_FRAM
 
 
 
-print("\nEvaluation loop entered...\n")
-
-
-
 def compute_std(frame): 
-    std =0 
-    for channel in cv2.split(frame):
-        std += np.std(channel)
+    std = 0 
+    for channel in range(3):
+        # std += np.std(channel)
+        std_channel = np.std(frame[channel, :, :])
+        std += std_channel
     return std
 
 
@@ -141,23 +139,6 @@ while True:
         
         print("\nProcessing batch...\n")
 
-        # Compute standard deviation - graininess
-        # new_computer_std = np.std(np.stack(computer_opponent_buffer))
-        # # new_computer_std = np.sum(new_computer_std)
-        # new_phone_std = np.std(np.stack(phone_opponent_buffer))
-        # # new_phone_std = np.sum(new_phone_std)
-        
-        # # Compute standard deviation across all frames in opponent space
-        # # computer_std_devs = [np.std(frame) for frame in computer_opponent_buffer]  
-        # # phone_std_devs = [np.std(frame) for frame in phone_opponent_buffer]
-
-        # computer_metrics['std'].append(new_computer_std)
-        # phone_metrics['std'].append(new_phone_std)
-        
-        # Compute std per frame (spatial std)
-        # computer_std_per_frame = [np.std(np.stack(frame, axis=0)) for frame in computer_opponent_buffer]
-        # phone_std_per_frame = [np.std(np.stack(frame), axis=0) for frame in phone_opponent_buffer]
-
         computer_std_per_frame = [compute_std(frame) for frame in computer_opponent_buffer]
         phone_std_per_frame = [compute_std(frame) for frame in phone_opponent_buffer]
 
@@ -169,11 +150,6 @@ while True:
         # Convert to Lab color space
         computer_lab_frames = [opponent_to_lab(frame) for frame in computer_opponent_buffer]
         phone_lab_frames = [opponent_to_lab(frame) for frame in phone_opponent_buffer]
-
-        # Compute color differences
-        # comp_avg_diff, comp_max_diff, comp_max_pos, comp_diff_maps = compute_color_difference(computer_lab_frames)
-        # phone_avg_diff, phone_max_diff, phone_max_pos, phone_diff_maps = compute_color_difference(phone_lab_frames)
-        # device_color_diff_avg, device_max_diff, device_max_pos, device_diff_maps = compute_color_difference(computer_lab_frames, phone_lab_frames) 
         
         device_diff_maps = []
         device_color_diff_avgs = []
@@ -200,8 +176,7 @@ while True:
         
         computer_metrics['color_diff'].append(device_color_diff_avg)
         phone_metrics['color_diff'].append(device_color_diff_avg)
-        
-        # phone_metrics['color_diff'].append(phone_avg_diff)
+    
 
         # Compute NIQE, BRISQUE, and PaQ2PiQ metrics
         computer_quality_metrics = compute_metrics(computer_frame)
@@ -210,16 +185,7 @@ while True:
         for metric in ['niqe', 'brisque', 'paq2piq', 'nima', 'piqe']:
             computer_metrics[metric].append(computer_quality_metrics[metric])
             phone_metrics[metric].append(phone_quality_metrics[metric])
-
-        # Compute moving averages on metrics
-        # computer_avg_std = np.mean(computer_metrics['std'])
-        # phone_avg_std = np.mean(phone_metrics['std'])
-        
-        # avg_computer_color_diff = np.mean(computer_metrics['color_diff'])
-        # avg_phone_color_diff = np.mean(phone_metrics['color_diff'] 
-        # device_color_diff_avg = np.mean(computer_metrics['color_diff'])
-        # print("device_color_diff_avg2: ", device_color_diff_avg)
-        
+            
         computer_avg_niqe = np.mean(computer_metrics['niqe'])
         computer_avg_brisque = np.mean(computer_metrics['brisque'])
         computer_avg_paq2piq = np.mean(computer_metrics['paq2piq'])
@@ -264,7 +230,6 @@ while True:
         
         # Save color difference maps using the logger function
         save_color_difference_maps(device_diff_maps, diff_dir, "computer")
-        # save_color_difference_maps(phone_diff_maps, phone_diff_dir, "phone")
 
         print("\nBatch Evaluated\n")
 

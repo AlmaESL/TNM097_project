@@ -3,6 +3,9 @@ import cv2
 from scipy.ndimage import convolve
 from skimage.color import rgb2xyz, xyz2lab
 
+OPP_MAT = np.array([[ 0.279,  0.722,  -0.107],
+    [-0.449,  0.326,  0.077],
+    [ 0.080, -0.59,   0.501]])
 
 def rgb_to_xyz(image):
     """Convert RGB to XYZ"""
@@ -11,7 +14,16 @@ def rgb_to_xyz(image):
 
 def xyz_to_lab(image):
     """Convert XYZ to LAB"""
-    return xyz2lab(image) 
+    
+    # convert to LAB
+    image = xyz2lab(image)
+    
+    # # Make sure lab values are 0,1
+    # image[..., 0] = np.clip(image[..., 0], 0, 100) # L* in [0,100] 
+    # image[..., 1] = np.clip(image[..., 1], -100, 100) # a* roughly in [-100,100] 
+    # image[..., 2] = np.clip(image[..., 2], -100, 100) # b* roughly in [-100,100]
+    
+    return image
 
 
 
@@ -194,24 +206,18 @@ def scielab(frame, spd):
     # print("o2 filtered: ", O2_f)
     # print("o3 filtered: ", O3_f)
     
-    # filtered_xyz = np.stack((O1_f, O2_f, O3_f), axis=-1).astype(np.float32)
-    # scielab_lab = xyz_to_lab(filtered_xyz)
-    
-    opponent_space = np.stack((O1_f, O2_f, O3_f), axis=-1)
-    
-    # print("opponent with spatials: ", opponent_space)
-    # print("opponent with spatials size: ", opponent_space.shape)
-    # Go back to XYZ space 
-    # opponent_xyz = opponent_to_xyz(opponent_space)
+    # make matrix of o1_f, o2_f and o3_f
+    # opponent_space = np.dstack((O1_f, O2_f, O3_f))
+    opponent_space = np.array([O1_f, O2_f, O3_f])
+    print("opponent matrix: ", opponent_space)
     
     return opponent_space
-    
-    # return scielab_lab
 
 
 
 
-def opponent_to_xyz(opponent_matrix):
+
+def opponent_to_xyz(frame):
     """
     Convert an opponent color matrix to the XYZ color space.
 
@@ -219,7 +225,6 @@ def opponent_to_xyz(opponent_matrix):
     ----------
     opponent_matrix : matrix
         opponent color matrix
-
     Returns
     -------
     xyz_matrix : matrix
@@ -231,11 +236,11 @@ def opponent_to_xyz(opponent_matrix):
     Then, the computed inverse transformation is applied to convert the opponent matrix to XYZ.
     Finally, the XYZ channels are stacked into a single matrix.
     """
-    
+    print("frame size:", frame.shape)
     # Unpack the opponent channels
-    O1 = opponent_matrix[..., 0]
-    O2 = opponent_matrix[..., 1]
-    O3 = opponent_matrix[..., 2]
+    O1 = frame[0, ...]
+    O2 = frame[1, ...]
+    O3 = frame[2, ...]
     
     # Apply the computed inverse transformation
     X = 0.610 * O1 - 1.819 * O2 - 0.149 * O3
@@ -252,7 +257,7 @@ def opponent_to_xyz(opponent_matrix):
 
 
 
-def opponent_to_lab(opponent_matrix):
+def opponent_to_lab(frame):
     """
     Convert an opponent color matrix to the LAB color space.
 
@@ -273,13 +278,10 @@ def opponent_to_lab(opponent_matrix):
     xyz2lab function. Finally, the L*, a*, and b* channels are clipped to
     their valid ranges to prevent overflows.
     """
-    xyz_matrix = opponent_to_xyz(opponent_matrix)
+    # print("frame")
+    xyz_matrix = opponent_to_xyz(frame)
     lab_matrix = xyz2lab(xyz_matrix)
     # print("lab: ", lab_matrix)
-    
-    # lab_matrix[..., 0] = np.clip(lab_matrix[..., 0], 0, 100) # L* in [0,100] 
-    # lab_matrix[..., 1] = np.clip(lab_matrix[..., 1], -100, 100) # a* roughly in [-100,100] 
-    # lab_matrix[..., 2] = np.clip(lab_matrix[..., 2], -100, 100) # b* roughly in [-100,100] 
     
     return lab_matrix
 
@@ -308,10 +310,22 @@ def compute_color_difference(lab_frame1, lab_frame2):
         2D array of pixel-wise color differences.
     """
     
+    print("lab1: ", lab_frame1.shape)
+    print("lab2: ", lab_frame2.shape)
+    
+    
+    # Ensure frames are in (H, W, 3) format
+    if lab_frame1.shape[0] != 3:
+        lab_frame1 = np.transpose(lab_frame1, (2, 1, 0))
+        print("lab1 transposed: ", lab_frame1.shape)
+    if lab_frame2.shape[0] != 3:
+        lab_frame2 = np.transpose(lab_frame2, (2, 1, 0))
+        print("lab2 transposed: ", lab_frame2.shape)
+    
     max = 0
     # Compute Euclidean distance at each pixel
     for channel in range(3):
-        diff_map = lab_frame2[..., channel] - lab_frame1[..., channel]
+        diff_map = lab_frame2[channel, :,:] - lab_frame1[channel,:,:]
         diff_map = diff_map**2
         diff_map = np.sqrt(diff_map)
  
@@ -327,4 +341,35 @@ def compute_color_difference(lab_frame1, lab_frame2):
     return mean_color_diff, max, max_diff_loc, diff_map
 
 
+# def compute_color_difference(lab_frame1, lab_frame2):
+#     """
+#     Compute the color difference between two frames in LAB color space using Euclidean distance.
 
+#     Parameters
+#     ----------
+#     lab_frame1 : numpy.array
+#         First frame in LAB color space.
+#     lab_frame2 : numpy.array
+#         Second frame in LAB color space.
+
+#     Returns
+#     -------
+#     mean_color_diff : float
+#         Mean color difference across the image.
+#     max_color_diff : float
+#         Maximum color difference observed.
+#     max_diff_loc : tuple
+#         Location (row, col) of the maximum color difference.
+#     diff_map : numpy.array
+#         2D array of pixel-wise color differences.
+#     """
+
+#     # Compute Euclidean distance at each pixel
+#     diff_map = np.sqrt(np.sum((lab_frame2 - lab_frame1) ** 2, axis=-1))
+
+#     # Compute statistics for diff maps and diff values
+#     mean_color_diff = np.mean(diff_map)  # per frame
+#     max_color_diff = np.max(diff_map)
+#     max_diff_loc = np.unravel_index(np.argmax(diff_map), diff_map.shape)  # Ensure it's always initialized
+
+#     return mean_color_diff, max_color_diff, max_diff_loc, diff_map

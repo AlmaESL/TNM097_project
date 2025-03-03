@@ -24,13 +24,10 @@ def resize_frame(frame, width=WIDTH, height=HEIGHT):
     """
     frame = cv2.resize(frame, (width, height))
     
-    # Remove 130 pizels on top and 80 on the bottom
-    # frame = frame[60:-80]
-    
     # Remove top 40 pixels
     frame = frame[40:]
     
-    print("new frame dim: ", frame.shape)
+    # print("new frame dim: ", frame.shape)
     return frame
 
 
