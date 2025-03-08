@@ -19,3 +19,4 @@ Dependencies:
 - pip install tabulate
 
 Preferably run within virtual python environment .venv in VSCode with python extension
+Windows command line: python main.py
