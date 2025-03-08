@@ -27,7 +27,6 @@ def resize_frame(frame, width=WIDTH, height=HEIGHT):
     # Remove top 40 pixels
     frame = frame[40:]
     
-    # print("new frame dim: ", frame.shape)
     return frame
 
 
@@ -55,24 +54,5 @@ def resize_phone_frame(frame, width=WIDTH, height=PHONE_HEIGHT):
     """
     
     return cv2.resize(frame, (width, height))
-    # return remove_margins(frame)
-
-
-# Function to remove the 64 pixel margins at top and bottom 
-def remove_margins(frame):
-    """
-    Remove the 64 pixel margins at top and bottom of the given frame.
-
-    Parameters
-    ----------
-    frame : numpy.array
-        Input frame or image to be resized
-
-    Returns
-    -------
-    resized_frame : numpy.array
-        Frame with margins removed
-    """
-    return frame[64:-64]
 
 

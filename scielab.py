@@ -9,23 +9,52 @@ OPP_MAT = np.array([[ 0.279,  0.722,  -0.107],
 
 def rgb_to_xyz(image):
     """Convert RGB to XYZ"""
-    #return cv2.cvtColor(image, cv2.COLOR_RGB2XYZ) #default scale [0,100]
     return rgb2xyz(image) #default scale [0,1] 
 
-def xyz_to_lab(image):
-    """Convert XYZ to LAB"""
-    
-    # convert to LAB
-    image = xyz2lab(image)
-    
-    # # Make sure lab values are 0,1
-    # image[..., 0] = np.clip(image[..., 0], 0, 100) # L* in [0,100] 
-    # image[..., 1] = np.clip(image[..., 1], -100, 100) # a* roughly in [-100,100] 
-    # image[..., 2] = np.clip(image[..., 2], -100, 100) # b* roughly in [-100,100]
-    
-    return image
+# def xyz_to_lab(image):
+#     """Convert XYZ to LAB"""
+#     return xyz2lab(image) 
 
+def xyz_to_lab(image, whitepoint=None, exp=1/3):
+    
+    if whitepoint is None:
+        whitepoint = [95.05, 100, 108.88]
 
+    Xn, Yn, Zn = whitepoint
+
+    x = image[..., 0] / Xn
+    y = image[..., 1] / Yn
+    z = image[..., 2] / Zn
+
+    # Find out points < 0.008856
+    xx = x <= 0.008856
+    yy = y <= 0.008856
+    zz = z <= 0.008856
+    
+    lab = np.zeros_like(image)
+    
+    # Compute L* values
+    fy = y[yy]
+    y = np.abs(y)**exp
+    lab[..., 0] = 116 * y - 16
+    lab[yy, 0] = 903.3 * fy
+
+    # Compute a* and b* values
+    fx = 7.787 * x[xx] + 16 / 116
+    fy = 7.787 * fy + 16 / 116
+    fz = 7.787 * z[zz] + 16 / 116
+    x = x**exp
+    z = np.abs(z)**exp
+    x[xx] = fx
+    y[yy] = fy
+    z[zz] = fz
+
+    lab[..., 1] = 500 * (x - y)
+    lab[..., 2] = 200 * (y - z)
+
+    return lab
+    
+   
 
 def xyz_to_opponent(XYZ):
     """
@@ -44,16 +73,14 @@ def xyz_to_opponent(XYZ):
     
     X, Y, Z = XYZ[:,:,0], XYZ[:,:,1], XYZ[:,:,2]
     
-    #Matrix to convert XYZ to opponent space
+    # Matrix to convert XYZ to opponent space
     O1 = 0.279*X + 0.72*Y - 0.107*Z
     O2 = -0.449*X + 0.29*Y - 0.077*Z
     O3 = 0.086*X - 0.59*Y + 0.501*Z
-    
-    # print("o1: ", O1)
-    # print("o2: ", O2)
-    # print("o3: ", O3)
-    
+
     return O1, O2, O3
+
+
 
 def gauss(half_width, width):
     """
@@ -77,7 +104,9 @@ def gauss(half_width, width):
     return gauss_filter / np.sum(gauss_filter)
 
 
-def sum_gauss(params, width):
+
+
+def sum_gauss(params, width, dimension=1):
     """
     Compute the sum of multiple Gaussian filters.
 
@@ -91,6 +120,8 @@ def sum_gauss(params, width):
         followed by pairs of half width and weight for each Gaussian filter.
     width : int
         The width of the output filter.
+    dimension : int, optional
+        Specifies whether the required sum of Gaussians is 1-D or 2-D. Defaults to 1.
 
     Returns
     -------
@@ -99,17 +130,70 @@ def sum_gauss(params, width):
     """
 
     num_G = (len(params) - 1) // 2
-    g = np.zeros(width)
+
+    if dimension == 2:
+        g = np.zeros((width, width))
+    else:
+        g = np.zeros(width)
     
     for i in range(num_G):
         half_width = params[2*i+1]
         weight = params[2*i+2]
-        g += weight * gauss(half_width, width)
+        if dimension == 2:
+            g0 = gauss2(half_width, width)
+        else:
+            g0 = gauss(half_width, width)
+        g += weight * g0
     
     return g
 
-def apply_spatial_filter(O1, O2, O3, spd):
+def gauss2(half_width, width):
+    """
+    Return a 2-D Gaussian filter of specified half width and width.
 
+    Parameters
+    ----------
+    half_width : int
+        Half width of the Gaussian filter.
+    width : int
+        Width of the output filter.
+
+    Returns
+    -------
+    gauss_filter : 2D array
+        2-D Gaussian filter of specified width and half width.
+    """
+    alpha = 2 * np.sqrt(np.log(2)) / (half_width - 1)
+    x = np.arange(width) - width // 2
+    y = np.arange(width) - width // 2
+    X, Y = np.meshgrid(x, y)
+    gauss_filter = np.exp(-alpha**2 * (X**2 + Y**2))
+    return gauss_filter / np.sum(gauss_filter)
+
+
+def conv2(x, y, mode='same'):
+    """
+    2D convolution of two arrays.
+    
+    Parameters
+    ----------
+    x : numpy.array
+        Input array to be convolved.
+    y : numpy.array
+        Convolution kernel.
+    mode : str, optional
+        Convolution mode, by default 'same'.
+    
+    Returns
+    -------
+    numpy.array
+        Convolved array.
+    """
+    return convolve(x, y, mode=mode)
+
+
+
+def apply_spatial_filter(O1, O2, O3, spd):
     """
     Apply spatial filtering to the opponent color space components.
 
@@ -141,7 +225,7 @@ def apply_spatial_filter(O1, O2, O3, spd):
 
     width = int(spd / 2) * 2 - 1  # Ensure odd width 
     
-    # Parameters for the Gaussian kernels - pre-defined for human visual system
+    # Parameters for the Gaussian kernels - from lab3 code
     x1 = [width, 0.05, 1.00327, 0.225, 0.114416, 7.0, -0.117686]
     x2 = [width, 0.0685, 0.616725, 0.826, 0.383275]
     x3 = [width, 0.0920, 0.567885, 0.6451, 0.432115]
@@ -150,20 +234,16 @@ def apply_spatial_filter(O1, O2, O3, spd):
     x2[1::2] = [x * spd for x in x2[1::2]]
     x3[1::2] = [x * spd for x in x3[1::2]]
 
-    k1 = sum_gauss(x1, width).astype(np.float64)
-    k2 = sum_gauss(x2, width).astype(np.float64)
-    k3 = sum_gauss(x3, width).astype(np.float64)
-
+    k1 = sum_gauss(x1, width, dimension=2).astype(np.float64)
+    k2 = sum_gauss(x2, width, dimension=2).astype(np.float64)
+    k3 = sum_gauss(x3, width, dimension=2).astype(np.float64)
 
     # Convolve with reflection padding 
-    O1_f = convolve(O1, k1[:, None], mode='reflect')
-    O2_f = convolve(O2, k2[:, None], mode='reflect')
-    O3_f = convolve(O3, k3[:, None], mode='reflect')
+    O1_f = conv2(O1, k1, mode='reflect')
+    O2_f = conv2(O2, k2, mode='reflect')
+    O3_f = conv2(O3, k3, mode='reflect')
 
     return O1_f, O2_f, O3_f
-
-7
-
 
 
 def scielab(frame, spd):
@@ -186,31 +266,24 @@ def scielab(frame, spd):
     # Step 1: Convert RGB to XYZ
     frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
     # Normalize
-    frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB).astype(np.float32) / 255.0
+    frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB).astype(np.float64) / 255.0
     xyz_frame = rgb_to_xyz(frame_rgb)
-    # print("xyz: ", xyz_frame)
-    # print("xyz size: ", xyz_frame.shape)
     
     # Step 2: Convert XYZ to opponent space
     O1, O2, O3 = xyz_to_opponent(xyz_frame)
-    # print("opponent without spatials: ", np.stack((O1, O2, O3), axis=-1))
-    # print("\n\no1: ", O1)
-    # print("o2: ", O2)
-    # print("o3: ", O3)
-    # print("size: ", np.stack((O1, O2, O3), axis=-1).shape)
-    
+    # print("O1: ", O1)
+    # print("O2: ", O2)
+    # print("O3: ", O3)
     
     # Step 3: Apply spatial filtering to the opponent space -> this represents the human visual system
     O1_f, O2_f, O3_f = apply_spatial_filter(O1, O2, O3, spd)
-    # print("o1 filtered: ", O1_f)
-    # print("o2 filtered: ", O2_f)
-    # print("o3 filtered: ", O3_f)
+    # print("O1_f: ", O1_f)
+    # print("O2_f: ", O2_f)
+    # print("O3_f: ", O3_f)
     
-    # make matrix of o1_f, o2_f and o3_f
-    # opponent_space = np.dstack((O1_f, O2_f, O3_f))
+    # Make matrix of o1_f, o2_f and o3_f
     opponent_space = np.array([O1_f, O2_f, O3_f])
-    print("opponent matrix: ", opponent_space)
-    
+  
     return opponent_space
 
 
@@ -236,7 +309,7 @@ def opponent_to_xyz(frame):
     Then, the computed inverse transformation is applied to convert the opponent matrix to XYZ.
     Finally, the XYZ channels are stacked into a single matrix.
     """
-    print("frame size:", frame.shape)
+ 
     # Unpack the opponent channels
     O1 = frame[0, ...]
     O2 = frame[1, ...]
@@ -246,11 +319,7 @@ def opponent_to_xyz(frame):
     X = 0.610 * O1 - 1.819 * O2 - 0.149 * O3
     Y = 1.416 * O1 + 0.798 * O2 + 0.425 * O3
     Z = 1.772 * O1 + 0.628 * O2 + 2.471 * O3
-    
-    # print("x_new: ", X)
-    # print("y_new: ", Y)
-    # print("z_new: ", Z)   
- 
+
     # Stack into an XYZ image
     xyz_matrix = np.stack((X, Y, Z), axis=-1)
     return xyz_matrix
@@ -278,10 +347,9 @@ def opponent_to_lab(frame):
     xyz2lab function. Finally, the L*, a*, and b* channels are clipped to
     their valid ranges to prevent overflows.
     """
-    # print("frame")
+    
     xyz_matrix = opponent_to_xyz(frame)
-    lab_matrix = xyz2lab(xyz_matrix)
-    # print("lab: ", lab_matrix)
+    lab_matrix = xyz_to_lab(xyz_matrix)
     
     return lab_matrix
 
@@ -310,25 +378,17 @@ def compute_color_difference(lab_frame1, lab_frame2):
         2D array of pixel-wise color differences.
     """
     
-    print("lab1: ", lab_frame1.shape)
-    print("lab2: ", lab_frame2.shape)
-    
-    
-    # Ensure frames are in (H, W, 3) format
+    # Transpose for logging color diff maps
     if lab_frame1.shape[0] != 3:
         lab_frame1 = np.transpose(lab_frame1, (2, 1, 0))
-        print("lab1 transposed: ", lab_frame1.shape)
+     
     if lab_frame2.shape[0] != 3:
         lab_frame2 = np.transpose(lab_frame2, (2, 1, 0))
-        print("lab2 transposed: ", lab_frame2.shape)
     
-    max = 0
-    # Compute Euclidean distance at each pixel
-    for channel in range(3):
-        diff_map = lab_frame2[channel, :,:] - lab_frame1[channel,:,:]
-        diff_map = diff_map**2
-        diff_map = np.sqrt(diff_map)
- 
+    
+    max = 0    
+    diff_map = np.sqrt((lab_frame2[0,:,:] - lab_frame1[0,:,:])**2 + (lab_frame2[1,:,:] - lab_frame1[1,:,:])**2 + (lab_frame2[2,:,:] - lab_frame1[2,:,:])**2)
+    
     # Compute statistics for diff maps and diff values
     mean_color_diff = np.mean(diff_map) # per frame
     max_color_diff = np.max(diff_map)
@@ -340,36 +400,3 @@ def compute_color_difference(lab_frame1, lab_frame2):
 
     return mean_color_diff, max, max_diff_loc, diff_map
 
-
-# def compute_color_difference(lab_frame1, lab_frame2):
-#     """
-#     Compute the color difference between two frames in LAB color space using Euclidean distance.
-
-#     Parameters
-#     ----------
-#     lab_frame1 : numpy.array
-#         First frame in LAB color space.
-#     lab_frame2 : numpy.array
-#         Second frame in LAB color space.
-
-#     Returns
-#     -------
-#     mean_color_diff : float
-#         Mean color difference across the image.
-#     max_color_diff : float
-#         Maximum color difference observed.
-#     max_diff_loc : tuple
-#         Location (row, col) of the maximum color difference.
-#     diff_map : numpy.array
-#         2D array of pixel-wise color differences.
-#     """
-
-#     # Compute Euclidean distance at each pixel
-#     diff_map = np.sqrt(np.sum((lab_frame2 - lab_frame1) ** 2, axis=-1))
-
-#     # Compute statistics for diff maps and diff values
-#     mean_color_diff = np.mean(diff_map)  # per frame
-#     max_color_diff = np.max(diff_map)
-#     max_diff_loc = np.unravel_index(np.argmax(diff_map), diff_map.shape)  # Ensure it's always initialized
-
-#     return mean_color_diff, max_color_diff, max_diff_loc, diff_map

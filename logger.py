@@ -19,10 +19,6 @@ computer_diff_dir = os.path.join(DIFF_DIR, "devices")
 # phone_diff_dir = os.path.join(DIFF_DIR, "phone")
 
 # Ensure directories exist
-# for directory in [COMPUTER_LOG_DIR, PHONE_LOG_DIR, 
-#                   computer_frames_dir, phone_frames_dir, 
-#                   computer_diff_dir, phone_diff_dir]:
-#     os.makedirs(directory, exist_ok=True)
 for directory in [COMPUTER_LOG_DIR, PHONE_LOG_DIR, 
                   computer_frames_dir, phone_frames_dir, 
                   computer_diff_dir]:
@@ -184,4 +180,4 @@ def save_color_difference_maps(diff_maps, save_dir, device):
         plt.savefig(save_path, bbox_inches='tight', pad_inches=0.1, dpi=300)
         plt.close()
 
-    print(f"Saved {len(diff_maps)} color difference maps from {device}")
+    print(f"Saved {len(diff_maps)} color difference maps to directory")
