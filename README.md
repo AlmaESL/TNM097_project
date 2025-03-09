@@ -34,6 +34,7 @@ No-reference IQA on video in OpenCV
 
 
 ### How to run: <br>
+git clone https://github.com/AlmaESL/TNM097_project.git <br>
 Preferably run within virtual python environment .venv in VSCode<br>
 Within the code directory, run from commandline with: 
 - python main.py
