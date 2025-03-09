@@ -1,22 +1,29 @@
 import numpy as np
 import cv2
 from scipy.ndimage import convolve
-from skimage.color import rgb2xyz, xyz2lab
+from skimage.color import rgb2xyz
 
-OPP_MAT = np.array([[ 0.279,  0.722,  -0.107],
-    [-0.449,  0.326,  0.077],
-    [ 0.080, -0.59,   0.501]])
 
 def rgb_to_xyz(image):
     """Convert RGB to XYZ"""
-    return rgb2xyz(image) #default scale [0,1] 
+    return rgb2xyz(image) 
 
-# def xyz_to_lab(image):
-#     """Convert XYZ to LAB"""
-#     return xyz2lab(image) 
 
 def xyz_to_lab(image, whitepoint=None, exp=1/3):
     
+    """
+    Convert an image from CIE XYZ color space to CIE LAB color space.
+
+    Parameters:
+    image -- input image in XYZ color space (shape: [H, W, 3])
+    whitepoint -- reference white point (defaults to D65: [95.05, 100, 108.88])
+    exp -- exponent used for gamma correction (default: 1/3)
+
+    Returns:
+    lab -- image in LAB color space (shape: [H, W, 3])
+    """
+
+    # D65
     if whitepoint is None:
         whitepoint = [95.05, 100, 108.88]
 
@@ -264,8 +271,6 @@ def scielab(frame, spd):
     """
     
     # Step 1: Convert RGB to XYZ
-    frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-    # Normalize
     frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB).astype(np.float64) / 255.0
     xyz_frame = rgb_to_xyz(frame_rgb)
     
@@ -315,7 +320,7 @@ def opponent_to_xyz(frame):
     O2 = frame[1, ...]
     O3 = frame[2, ...]
     
-    # Apply the computed inverse transformation
+    # Apply the inverse transformation back to XYZ
     X = 0.610 * O1 - 1.819 * O2 - 0.149 * O3
     Y = 1.416 * O1 + 0.798 * O2 + 0.425 * O3
     Z = 1.772 * O1 + 0.628 * O2 + 2.471 * O3
@@ -386,16 +391,18 @@ def compute_color_difference(lab_frame1, lab_frame2):
         lab_frame2 = np.transpose(lab_frame2, (2, 1, 0))
     
     
-    max = 0    
+    max = 0   
+    # Compute color difference with Euclidean distance 
     diff_map = np.sqrt((lab_frame2[0,:,:] - lab_frame1[0,:,:])**2 + (lab_frame2[1,:,:] - lab_frame1[1,:,:])**2 + (lab_frame2[2,:,:] - lab_frame1[2,:,:])**2)
     
     # Compute statistics for diff maps and diff values
-    mean_color_diff = np.mean(diff_map) # per frame
+    mean_color_diff = np.mean(diff_map)
     max_color_diff = np.max(diff_map)
     
+    # Locate location of max difference
     if(max_color_diff > max):
         max = max_color_diff
-        max_diff_loc = np.unravel_index(np.argmax(diff_map), diff_map.shape)  # Location of max difference
+        max_diff_loc = np.unravel_index(np.argmax(diff_map), diff_map.shape)  
     
 
     return mean_color_diff, max, max_diff_loc, diff_map

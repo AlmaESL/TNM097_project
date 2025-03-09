@@ -1,12 +1,10 @@
 import pyiqa #BRISQUE, NIQUE, PaQ2PiQ and A LOT more!
 import numpy as np
-import torch # make frames into tensors - compatible with pyiqa
+import torch # Make frames into tensors - compatible with pyiqa
 
 
 niqe_metric = pyiqa.create_metric('niqe').to('cpu')
-
 paq2piq_metric = pyiqa.create_metric('paq2piq').to('cpu')
-
 nima_metric = pyiqa.create_metric('nima').to('cpu')
 piqe_metric = pyiqa.create_metric('piqe').to('cpu')
 

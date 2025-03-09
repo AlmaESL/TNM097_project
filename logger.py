@@ -16,7 +16,6 @@ phone_frames_dir = os.path.join(FRAME_DIR, "phone")
 
 DIFF_DIR = "Color difference maps"
 computer_diff_dir = os.path.join(DIFF_DIR, "devices")
-# phone_diff_dir = os.path.join(DIFF_DIR, "phone")
 
 # Ensure directories exist
 for directory in [COMPUTER_LOG_DIR, PHONE_LOG_DIR, 
@@ -37,8 +36,7 @@ def get_phone_frames_dir():
 def get_computer_diff_dir():
     return computer_diff_dir
 
-# def get_phone_diff_dir():
-#     return phone_diff_dir
+
 
 
 # ------------------------- Logging Functions ------------------------- #

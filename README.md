@@ -21,7 +21,7 @@ No-reference IQA on video in OpenCV
 - Connect additional cameras to machine via IP, WiFi or USB 
 
 ### Files: 
-- **main.py:** SPD constants WIDTH, HEIGHT, SCREEN_DIAGONAL can be changed here, MAX_SIZE for sequence size to process, and camera port initialization <br> The main file of the program, which captures video, evaluates video sequences and logs results. 
+- **main.py:** SPD constants WIDTH, HEIGHT, SCREEN_DIAGONAL can be changed here, MAX_FRAMES for sequence size to process, and camera port initialization <br> The main file of the program, which captures video, evaluates video sequences and logs results. 
 - **scielab.py:** Converts BGR frames in a batch to opponent HVS filtered space, LAB space and computes average color difference on each frame in the batch with euclidean distance. Contains intermediate conversion steps to and from XYZ and Gaussian-based filtering for HVS. 
 - **importedMetrics.py:** This file fetches the automatic metrics from the pyiqa library and converts frames to pytorch tensors for compatibility.  
 - **logger.py:** File that saves captured frames, evaluation results and color difference maps from main.py to directory. Can also print evaluation results to OpenCV-frames. 

@@ -29,7 +29,7 @@ spd = compute_spd(SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_DIAGONAL)
 counter = 0
 
 MAX_FRAMES = 30  
-FRAME_DELAY = 0.01
+
 
 
 #-----------------------------Directories for results logging------------------------------------#
@@ -119,15 +119,7 @@ while True:
     computer_frame_buffer.append(computer_frame)
     phone_frame_buffer.append(phone_frame)
     
-    
-    # Small delay for smoother processing
-    # time.sleep(FRAME_DELAY)
-    
-    # Exit main loop when 'q' is pressed
-    # if cv2.waitKey(1) & 0xFF == ord('q'):
-    #     break
-    
-    # Exit when counter exceeds MAX_FRAMES
+    # Exit capture when counter exceeds MAX_FRAMES
     if counter >= MAX_FRAMES:
         break
 
@@ -140,15 +132,11 @@ cv2.destroyAllWindows()
 # print("\nEvaluation loop exited\n")
 print("\nComputing opponent buffers...\n")
 
-# computer_opponent_buffer.append(computer_scielab)
-# phone_opponent_buffer.append(phone_scielab)
-
-
 # Convert to opponent color space and add to opponent buffers
 comp_counter = 0
 for computer_frame in computer_frame_buffer:
     computer_opponent_buffer.append(scielab(computer_frame, spd))
-    print("Added computer frame no. ", comp_counter)
+    print("Converted computer frame no. ", comp_counter)
     comp_counter += 1
 
 print("\n")
@@ -156,7 +144,7 @@ print("\n")
 phone_counter = 0
 for phone_frame in phone_frame_buffer:
     phone_opponent_buffer.append(scielab(phone_frame, spd))
-    print("Added phone frame no. ", phone_counter)
+    print("Converted phone frame no. ", phone_counter)
     phone_counter += 1
     
 # Process every batch of size MAX_FRAMES
@@ -183,6 +171,7 @@ if len(computer_opponent_buffer) == MAX_FRAMES and len(phone_opponent_buffer) ==
     device_max_positions = []
     device_max_indices = []
 
+    # Compute color differences
     for i, (comp_lab, phone_lab) in enumerate(zip(computer_lab_frames, phone_lab_frames)):
         avg_diff, max_diff, max_pos, diff_map = compute_color_difference(comp_lab, phone_lab)
     
@@ -193,7 +182,6 @@ if len(computer_opponent_buffer) == MAX_FRAMES and len(phone_opponent_buffer) ==
         device_max_indices.append(i)
 
     device_color_diff_avg = np.mean(device_color_diff_avgs)
-    print("device_color_diff_avg: ", device_color_diff_avg)
         
     device_max_diff = np.max(device_max_diffs)
     device_max_pos = device_max_positions[np.argmax(device_max_diffs)]
@@ -233,29 +221,29 @@ if len(computer_opponent_buffer) == MAX_FRAMES and len(phone_opponent_buffer) ==
 
         
     # Update stats windows
-    draw_stats_window_computer({
-        "std": computer_avg_std,
-        "avg_diff": device_color_diff_avg,
-        "max_diff": device_max_diff,
-        "max_pos": device_max_pos,
-        "niqe": computer_avg_niqe,
-        "piqe": computer_avg_piqe,
-        "brisque": computer_avg_brisque,
-        "nima": computer_avg_nima,
-        "paq2piq": computer_avg_paq2piq  
-    })
+    # draw_stats_window_computer({
+    #     "std": computer_avg_std,
+    #     "avg_diff": device_color_diff_avg,
+    #     "max_diff": device_max_diff,
+    #     "max_pos": device_max_pos,
+    #     "niqe": computer_avg_niqe,
+    #     "piqe": computer_avg_piqe,
+    #     "brisque": computer_avg_brisque,
+    #     "nima": computer_avg_nima,
+    #     "paq2piq": computer_avg_paq2piq  
+    # })
         
-    draw_stats_window_phone({
-        "std": phone_avg_std,
-        "avg_diff": device_color_diff_avg,
-        "max_diff": device_max_diff,
-        "max_pos": device_max_pos,
-        "niqe": phone_avg_niqe,
-        "piqe": phone_avg_piqe,
-        "brisque": phone_avg_brisque,
-        "nima": phone_avg_nima,
-        "paq2piq": phone_avg_paq2piq
-    })
+    # draw_stats_window_phone({
+    #     "std": phone_avg_std,
+    #     "avg_diff": device_color_diff_avg,
+    #     "max_diff": device_max_diff,
+    #     "max_pos": device_max_pos,
+    #     "niqe": phone_avg_niqe,
+    #     "piqe": phone_avg_piqe,
+    #     "brisque": phone_avg_brisque,
+    #     "nima": phone_avg_nima,
+    #     "paq2piq": phone_avg_paq2piq
+    # })
         
     # Save color difference maps using the logger function
     save_color_difference_maps(device_diff_maps, diff_dir, "computer")
