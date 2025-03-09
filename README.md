@@ -17,8 +17,6 @@ No-reference IQA on live video in OpenCV
 - pip install pyica
 - pip install tabulate
 
-- 
-
 
 ## Files: 
 - **main.py:** SPD constants WIDTH, HEIGHT, SCREEN_DIAGONAL can be changed here, MAX_SIZE for sequence size to process, and camera port initialization <br> The main file of the program, which captures video, evaluates video sequences and logs results 
@@ -27,10 +25,10 @@ No-reference IQA on live video in OpenCV
 - **logger.py:** File that saves captured frames, evaluation results and color difference maps from main.py to directory. Can also print evaluation results to OpenCV-frames. 
 - **scaleResolution.py:** Scales captured frames to 400X400 and cuts the top 40 pixels
 - **SPD.py:** Computes the spd from values given in main.py. Defaults viewing distance to 40cm. 
-- **FPS.py:** Computes and prints the fps rate of video capture. Print can also be put onto captured frames.
+- **FPS.py:** Computes and prints the fps rate of video capture. Print can also be put onto captured frames. <br>
 
 - **getAvailableCameras.py:** Code snippet that prints what camera ports are available on the machine. Assumes number of available ports is 5 or less.
-- **testCams:** Code snippet to test found camera ports and camera positionings. Quit run by hitting "q". Defaulted to ports 0 and 1. 
+- **testCams.py:** Code snippet to test found camera ports and camera positionings. Quit run by hitting "q". Defaulted to ports 0 and 1. 
 
 
 ## How to run: <br>
