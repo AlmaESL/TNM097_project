@@ -18,7 +18,7 @@ No-reference IQA on video in OpenCV
 - pip install tabulate
 <br><br>
 
-- Connect additional cameras to machine via IP, WiFi or USB 
+- Connect additional cameras to machine via IP, WiFi or USB (USB connection to a smart phone might require a USB driver for the phone brand and manual tehtering activation).
 
 ### Files: 
 - **main.py:** SPD constants WIDTH, HEIGHT, SCREEN_DIAGONAL can be changed here, MAX_FRAMES for sequence size to process, and camera port initialization <br> The main file of the program, which captures video, evaluates video sequences and logs results. 
