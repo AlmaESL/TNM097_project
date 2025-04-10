@@ -45,7 +45,7 @@ cap_phone = cv2.VideoCapture(1)
 
 
 
-#------------------------Initialize time for fpd calculations-----------------------------#
+#------------------------Initialize time for fps calculations-----------------------------#
 prev_frame_time = time.time()
 
 
@@ -73,6 +73,19 @@ phone_metrics = { 'std': deque(maxlen=MAX_FRAMES), 'niqe': deque(maxlen=MAX_FRAM
 
 
 def compute_std(frame): 
+    """
+    Compute the standard deviation of a frame.
+
+    Parameters
+    ----------
+    frame : numpy.ndarray
+        Input frame
+
+    Returns
+    -------
+    std : float
+        Standard deviation of the frame
+    """
     std = 0 
     for channel in range(3):
         std_channel = np.std(frame[channel, :, :])
@@ -81,13 +94,13 @@ def compute_std(frame):
 
 
 
-#------------------------------------Main loop--------------------------------#
+#------------------------------------Main capture loop------------------------------------#
 while True:
     
-    # Count frames captured, for logging
+    # Count frames captured
     counter += 1
     
-    # Read frames from capture souces 
+    # Read frames from capture sources 
     ret_computer, computer_frame = cap_computer.read()
     ret_phone, phone_frame = cap_phone.read()
     
@@ -103,6 +116,8 @@ while True:
     
     computer_frame = resize_frame(computer_frame)
     phone_frame = resize_frame(phone_frame)
+    
+    # Mirroring frames not applicable for all cameras - was in my case though 
     phone_frame = flip(phone_frame)
     
     # Display live video feed
@@ -124,28 +139,34 @@ while True:
         break
 
 
-# Cleanup
+# Cleanup capture
 cap_computer.release()
 cap_phone.release()
 cv2.destroyAllWindows()
 
-# print("\nEvaluation loop exited\n")
+
+
+
+#-----------------------------------Evaluation Starts Here-----------------------------------#
+
 print("\nComputing opponent buffers...\n")
 
 # Convert to opponent color space and add to opponent buffers
 comp_counter = 0
 for computer_frame in computer_frame_buffer:
+    comp_counter += 1
     computer_opponent_buffer.append(scielab(computer_frame, spd))
     print("Converted computer frame no. ", comp_counter)
-    comp_counter += 1
+    
 
 print("\n")
 
 phone_counter = 0
 for phone_frame in phone_frame_buffer:
+    phone_counter += 1
     phone_opponent_buffer.append(scielab(phone_frame, spd))
     print("Converted phone frame no. ", phone_counter)
-    phone_counter += 1
+
     
 # Process every batch of size MAX_FRAMES
 if len(computer_opponent_buffer) == MAX_FRAMES and len(phone_opponent_buffer) == MAX_FRAMES:
@@ -159,12 +180,13 @@ if len(computer_opponent_buffer) == MAX_FRAMES and len(phone_opponent_buffer) ==
     computer_avg_std = np.mean(computer_std_per_frame)
     phone_avg_std = np.mean(phone_std_per_frame)
 
-    print("\nComputing color differences...\n")
+    print("Computing color differences...\n")
     
     # Convert to Lab color space
     computer_lab_frames = [opponent_to_lab(frame) for frame in computer_opponent_buffer]
     phone_lab_frames = [opponent_to_lab(frame) for frame in phone_opponent_buffer]
-        
+    
+    # Initialize arrays for color differences
     device_diff_maps = []
     device_color_diff_avgs = []
     device_max_diffs = []
@@ -187,20 +209,19 @@ if len(computer_opponent_buffer) == MAX_FRAMES and len(phone_opponent_buffer) ==
     device_max_pos = device_max_positions[np.argmax(device_max_diffs)]
     max_diff_frame_index = device_max_indices[np.argmax(device_max_diffs)]
     print("max color diff at index: ", max_diff_frame_index)
-        
-    computer_metrics['color_diff'].append(device_color_diff_avg)
-    phone_metrics['color_diff'].append(device_color_diff_avg)
     
     print("\nComputing automatic metrics...\n")
-
-    # Compute NIQE, BRISQUE, and PaQ2PiQ metrics
-    computer_quality_metrics = compute_metrics(computer_frame)
-    phone_quality_metrics = compute_metrics(phone_frame)
-
-    for metric in ['niqe', 'brisque', 'paq2piq', 'nima', 'piqe']:
-        computer_metrics[metric].append(computer_quality_metrics[metric])
-        phone_metrics[metric].append(phone_quality_metrics[metric])
-            
+    
+    # Compute NIQE, BRISQUE, and PaQ2PiQ metrics for each computer and phone frame and add to their respective deques (Bonus: NIMA and BRISQUE)
+    for computer_frame, phone_frame in zip(computer_frame_buffer, phone_frame_buffer):
+        computer_quality_metrics = compute_metrics(computer_frame)
+        phone_quality_metrics = compute_metrics(phone_frame)
+        
+        for metric in ['niqe', 'brisque', 'paq2piq', 'nima', 'piqe']:
+            computer_metrics[metric].append(computer_quality_metrics[metric])
+            phone_metrics[metric].append(phone_quality_metrics[metric])
+    
+    # Average automatic metrics
     computer_avg_niqe = np.mean(computer_metrics['niqe'])
     computer_avg_brisque = np.mean(computer_metrics['brisque'])
     computer_avg_paq2piq = np.mean(computer_metrics['paq2piq'])
@@ -248,7 +269,7 @@ if len(computer_opponent_buffer) == MAX_FRAMES and len(phone_opponent_buffer) ==
     # Save color difference maps using the logger function
     save_color_difference_maps(device_diff_maps, diff_dir, "computer")
 
-    print("\nBatch Evaluated\n")
+    print("\nEvaluation Complete\n")
 
     # Flush deques
     computer_frame_buffer.clear()

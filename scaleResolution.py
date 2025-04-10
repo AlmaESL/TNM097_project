@@ -5,7 +5,7 @@ WIDTH, HEIGHT = 400, 400
 
 def resize_frame(frame, width=WIDTH, height=HEIGHT):
     """
-    Resize a frame to predefined dimensions 512x512
+    Resize a frame to predefined dimensions 400x400.
 
     Parameters
     ----------
@@ -29,6 +29,7 @@ def resize_frame(frame, width=WIDTH, height=HEIGHT):
     return frame
 
 
+# Phone frames have to be mirrored 
 def flip(frame): 
     return cv2.flip(frame, 1)
 

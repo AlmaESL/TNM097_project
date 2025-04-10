@@ -23,7 +23,7 @@ def preprocess_frame(frame):
     preprocessed_frame : torch.Tensor
         Preprocessed frame as a PyTorch tensor
     """
-    # Normalize frame
+    # Normalize frame - for NQIE compatibility
     frame = frame.astype(np.float32) / 255.0
     
     # Transpose frame
@@ -35,7 +35,7 @@ def preprocess_frame(frame):
 def compute_metrics(frame):
 
     """
-    Compute a set of metrics for a given frame.
+    Compute automatic metrics for a given frame.
 
     Parameters
     ----------
@@ -48,11 +48,13 @@ def compute_metrics(frame):
         Dictionary of metrics, with keys 'niqe', 'brisque', 'paq2piq', 'nima', and 'piqe'
     """
     brisque_metric = pyiqa.create_metric('brisque').to('cpu')
+    
+    # Convert frame to tensor
     frame_tensor = preprocess_frame(frame)
+    
     return {
         
         'niqe': niqe_metric(frame_tensor).item(),
-        
         'brisque': brisque_metric(frame_tensor).item(),
         'paq2piq': paq2piq_metric(frame_tensor).item(),
         'nima': nima_metric(frame_tensor).item(), 

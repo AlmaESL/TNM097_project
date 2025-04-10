@@ -46,7 +46,7 @@ def get_log_file_path(log_dir, device):
 
 
 def log_results(log_dir, device, std, avg_diff, max_diff, max_pos, niqe, brisque, paq2piq, nima, piqe):
-    """Logs evaluation results in a structured format with a timestamped filename."""
+    """Logs evaluation results with a timestamped filename - txt."""
     log_file = get_log_file_path(log_dir, device)
 
     with open(log_file, 'a', encoding="utf-8") as f:
@@ -54,6 +54,7 @@ def log_results(log_dir, device, std, avg_diff, max_diff, max_pos, niqe, brisque
         f.write(f"{device} Evaluation Results - {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
         f.write("="*60 + "\n")
 
+        # All values rounded off to 3 decimals for visibility
         table_data = [
             ["Metric", "Value"],
             ["Avg STD - Graininess", f"{std:.3f}"],
@@ -80,7 +81,7 @@ def log_phone_results(std, avg_diff, max_diff, max_pos, niqe, brisque, paq2piq, 
 
 def draw_stats_window_computer(stats, width=600, height=600): 
     """
-    Draws a statistics window displaying various quality metrics.
+    Draws a statistics window displaying the quality metrics for the computer.
 
     Parameters
     ----------
@@ -111,6 +112,7 @@ def draw_stats_window_computer(stats, width=600, height=600):
         f"PaQ2PiQ: {stats['paq2piq']:.3f}"
     ]
     
+    # Offset for each line for placement
     y_offset = 30
     for i, line in enumerate(metrics_list):
         cv2.putText(stats_frame, line, (20, y_offset + i*30),
@@ -124,7 +126,7 @@ def draw_stats_window_computer(stats, width=600, height=600):
     
 def draw_stats_window_phone(stats, width=600, height=600): 
     """
-    Draws a statistics window displaying various quality metrics.
+    Draws a statistics window displaying the quality metrics for the phone.
 
     Parameters
     ----------
@@ -170,6 +172,8 @@ def save_color_difference_maps(diff_maps, save_dir, device):
     """Saves color difference maps as images with color bars."""
     for i, diff_map in enumerate(diff_maps):
         plt.figure(figsize=(6, 6))
+        
+        # Use viridis color map
         plt.imshow(diff_map, cmap='viridis')
         plt.colorbar(label='Color Difference')
         plt.axis('off')

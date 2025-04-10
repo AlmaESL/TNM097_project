@@ -2,10 +2,9 @@ import numpy as np
 import math
 
 def compute_spd(screen_width, screen_height, screen_diagonal, viewing_distance=15.748): 
-    
     """
     Compute the Samples Per Degree of a screen given its dimensions
-    and viewing distance
+    and viewing distance.
 
     Parameters
     ----------
@@ -26,6 +25,7 @@ def compute_spd(screen_width, screen_height, screen_diagonal, viewing_distance=1
 
     ppi = np.sqrt(screen_width**2 + screen_height**2) / screen_diagonal
     spd = round(ppi * viewing_distance * (math.pi/180), 3)
+    
     print("\nComputing spd...")
     print("Samples Per Degree: ", spd, "\n")
     

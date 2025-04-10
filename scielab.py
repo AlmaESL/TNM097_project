@@ -15,12 +15,12 @@ def xyz_to_lab(image, whitepoint=None, exp=1/3):
     Convert an image from CIE XYZ color space to CIE LAB color space.
 
     Parameters:
-    image -- input image in XYZ color space (shape: [H, W, 3])
+    image -- input image in XYZ color space 
     whitepoint -- reference white point (defaults to D65: [95.05, 100, 108.88])
     exp -- exponent used for gamma correction (default: 1/3)
 
     Returns:
-    lab -- image in LAB color space (shape: [H, W, 3])
+    lab -- image in LAB color space 
     """
 
     # D65
@@ -69,7 +69,7 @@ def xyz_to_opponent(XYZ):
 
     Parameters
     ----------
-    XYZ : array, shape (M,N,3)
+    XYZ : array
         XYZ color space image.
 
     Returns
